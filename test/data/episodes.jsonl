@@ -1,0 +1,3 @@
+{"source_id": "msg-1", "text": "Ann (ann@x.com) now operates station S-7, rated 200 kW, since 2024-03.", "reference_time": "2024-03-04T09:15:00+00:00", "metadata": {"channel": "line-2"}}
+
+{"source_id": "msg-2", "text": "Opened a work order for S-7: hydraulic leak.", "context": [{"source_id": "msg-1", "text": "Ann now operates station S-7."}]}

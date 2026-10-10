@@ -6,10 +6,10 @@ requires = ["hatchling"]
 bench = []
 dev = [
   "jsonschema>=4.23.0",
-  "pre-commit>=4.5.1",
+  "pre-commit>=4.6.2",
   "pytest-asyncio>=1.2.0",
   "pytest>=9.0.2",
-  "ty>=0.0.14"
+  "ty>=0.0.86",
 ]
 
 [project]
@@ -36,10 +36,6 @@ version = "0.1.0"
 # Reserved: the dense retrieval lane and the HTTP service. Empty in 0.1.
 embed = []
 server = []
-dev = [
-    "pre-commit>=4.6.2",
-    "ty>=0.0.86",
-]
 
 [project.scripts]
 lpgcast = "lpgcast.cli:main"

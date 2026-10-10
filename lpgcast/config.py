@@ -126,3 +126,22 @@ class LPGCastSettings(BaseSettings):
 
     llm: LLMSettings = Field(default_factory=LLMSettings)
     cache: CacheSettings = Field(default_factory=CacheSettings)
+
+    max_episode_tokens: int = Field(
+        default=4000,
+        ge=1,
+        description=(
+            "Ceiling on an episode's estimated tokens (characters / 4). Episodes "
+            "are never chunked: one over the ceiling is refused before any call."
+        ),
+    )
+    slice_max_tokens: int | None = Field(
+        default=4000, ge=1, description="Token budget of the schema slice."
+    )
+    slice_max_elements: int | None = Field(
+        default=60, ge=1, description="Vertex and edge budget of the schema slice."
+    )
+    user_instruction: str | None = Field(
+        default=None,
+        description="Extra guidance placed after the rules, before the text.",
+    )

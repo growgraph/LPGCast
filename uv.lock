@@ -1007,12 +1007,6 @@ dependencies = [
     { name = "pyyaml" },
 ]
 
-[package.optional-dependencies]
-dev = [
-    { name = "pre-commit" },
-    { name = "ty" },
-]
-
 [package.dev-dependencies]
 dev = [
     { name = "jsonschema" },
@@ -1027,22 +1021,20 @@ requires-dist = [
     { name = "click", specifier = ">=8.2.0,<9" },
     { name = "graflo", editable = "../graflo" },
     { name = "openai", specifier = ">=1.109.0,<3" },
-    { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=4.6.2" },
     { name = "pydantic", specifier = ">=2.12.5" },
     { name = "pydantic-settings", specifier = ">=2.12.0" },
     { name = "pyyaml", specifier = ">=6.0" },
-    { name = "ty", marker = "extra == 'dev'", specifier = ">=0.0.86" },
 ]
-provides-extras = ["embed", "server", "dev"]
+provides-extras = ["embed", "server"]
 
 [package.metadata.requires-dev]
 bench = []
 dev = [
     { name = "jsonschema", specifier = ">=4.23.0" },
-    { name = "pre-commit", specifier = ">=4.5.1" },
+    { name = "pre-commit", specifier = ">=4.6.2" },
     { name = "pytest", specifier = ">=9.0.2" },
     { name = "pytest-asyncio", specifier = ">=1.2.0" },
-    { name = "ty", specifier = ">=0.0.14" },
+    { name = "ty", specifier = ">=0.0.86" },
 ]
 
 [[package]]
