@@ -1,0 +1,128 @@
+"""Settings, read from the environment.
+
+Three prefixes, none shared with other tools: ``LPGCAST_LLM_`` for the model,
+``LPGCAST_CACHE_`` for the response cache and ``LPGCAST_`` for the rest. No
+``.env`` file is read; export the variables or pass the settings objects.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Literal
+
+from pydantic import Field, SecretStr, model_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+ResponseFormat = Literal["auto", "json_schema", "json_object"]
+
+
+class LLMSettings(BaseSettings):
+    """The model endpoint: any OpenAI-compatible server (OpenAI, Ollama ``/v1``, vLLM)."""
+
+    model_config = SettingsConfigDict(env_prefix="LPGCAST_LLM_", extra="ignore")
+
+    model: str = Field(
+        default="",
+        description="Model name sent to the endpoint. Required for any call.",
+    )
+    base_url: str | None = Field(
+        default=None,
+        description=(
+            "Endpoint base URL, e.g. ``http://localhost:11434/v1`` for Ollama. "
+            "Unset means OpenAI."
+        ),
+    )
+    api_key: SecretStr | None = Field(
+        default=None,
+        description=(
+            "API key. Required for any provider call, including to endpoints "
+            "that ignore it (set any value for a local server). Without one "
+            "only cached responses are served."
+        ),
+    )
+    temperature: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=2.0,
+        description="Sampling temperature. Unset sends none: the model's default.",
+    )
+    reasoning_effort: str | None = Field(
+        default=None,
+        description="Passed through to models that accept ``reasoning_effort``.",
+    )
+    max_output_tokens: int | None = Field(
+        default=None,
+        ge=1,
+        description=(
+            "Output ceiling per call: ``max_completion_tokens`` to OpenAI, "
+            "``max_tokens`` to any other endpoint."
+        ),
+    )
+    response_format: ResponseFormat = Field(
+        default="auto",
+        description=(
+            "``json_schema`` sends the instance schema for strict decoding; "
+            "``json_object`` asks for JSON and puts the schema in the prompt; "
+            "``auto`` tries ``json_schema`` and falls back to ``json_object`` "
+            "for the rest of the run when the endpoint rejects it."
+        ),
+    )
+    request_timeout_seconds: float = Field(
+        default=120.0, gt=0, description="Per-request timeout."
+    )
+    transport_retries: int = Field(
+        default=2,
+        ge=0,
+        description="SDK retries on connection errors, 429 and 5xx.",
+    )
+    parse_retries: int = Field(
+        default=2,
+        ge=0,
+        description=(
+            "Re-asks after a response that is not a JSON object, with the "
+            "parse error shown to the model."
+        ),
+    )
+    max_inflight: int = Field(
+        default=8, ge=1, description="Concurrent provider requests per event loop."
+    )
+
+
+class CacheSettings(BaseSettings):
+    """The on-disk response cache."""
+
+    model_config = SettingsConfigDict(env_prefix="LPGCAST_CACHE_", extra="ignore")
+
+    enabled: bool = Field(default=True, description="Read and write cached responses.")
+    dir: Path | None = Field(
+        default=None,
+        description=(
+            "Cache directory. Unset: ``./.test_cache`` under pytest, else "
+            "``$XDG_CACHE_HOME/lpgcast`` or ``~/.cache/lpgcast``."
+        ),
+    )
+    read_only: bool = Field(
+        default=False, description="Serve cached responses but write no new ones."
+    )
+    require_hit: bool = Field(
+        default=False,
+        description=(
+            "A cache miss raises instead of calling the model: a replay that "
+            "provably makes no request."
+        ),
+    )
+
+    @model_validator(mode="after")
+    def _require_hit_needs_cache(self) -> CacheSettings:
+        if self.require_hit and not self.enabled:
+            raise ValueError("require_hit needs the cache enabled")
+        return self
+
+
+class LPGCastSettings(BaseSettings):
+    """Top-level settings."""
+
+    model_config = SettingsConfigDict(env_prefix="LPGCAST_", extra="ignore")
+
+    llm: LLMSettings = Field(default_factory=LLMSettings)
+    cache: CacheSettings = Field(default_factory=CacheSettings)

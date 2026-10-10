@@ -218,3 +218,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Response cache written by tests run without LPGCAST_CACHE_DIR
+.test_cache/

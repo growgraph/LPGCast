@@ -1,0 +1,41 @@
+metadata:
+    name: plant
+    version: 1.0.0
+core_schema:
+    vertex_config:
+        vertices:
+        -   name: Machine
+            description: A production machine.
+            semantics:
+                synonyms: [unit, station]
+            properties:
+            -   name: serial
+                type: STRING
+            -   name: power
+                type: FLOAT
+                semantics:
+                    unit: kW
+            identity: [serial]
+        -   name: Person
+            properties:
+            -   name: email
+                type: STRING
+            -   name: name
+                type: STRING
+            identity: [email]
+        -   name: WorkOrder
+            properties:
+            -   name: summary
+                type: STRING
+            assigned: true
+    edge_config:
+        edges:
+        -   source: Person
+            target: Machine
+            relation: OPERATES
+            properties:
+            -   name: since
+                type: DATETIME
+        -   source: WorkOrder
+            target: Machine
+            relation: CONCERNS

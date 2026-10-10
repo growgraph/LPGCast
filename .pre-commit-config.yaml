@@ -1,0 +1,58 @@
+repos:
+  # Repository hygiene and JSON formatting. Env files, fixture data and vendored
+  # font files are excluded: their bytes are kept as committed.
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+    -   id: check-merge-conflict
+    -   id: check-added-large-files
+        args: [--maxkb=2000]
+    -   id: end-of-file-fixer
+        exclude: (^|/)(\.env|data/)|^lpgcast/plot/fonts/|\.svg$
+    -   id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+        exclude: (^|/)(\.env|data/)|^lpgcast/plot/fonts/|\.svg$
+    -   id: pretty-format-json
+        args: [--autofix, --indent, '4', --no-sort-keys]
+
+  # Python linting and formatting
+-   repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.10
+    hooks:
+    -   id: ruff-check
+        args: [--fix]
+    -   id: ruff-format
+
+-   repo: local
+    hooks:
+    # Type checking
+    -   id: ty
+        name: ty check
+        entry: uv run --frozen ty check lpgcast test
+        language: system
+        types: [python]
+        pass_filenames: false
+
+    # Package docs must not point outside this repository
+    -   id: no-external-doc-paths
+        name: no external doc paths
+        language: pygrep
+        entry: '(?i)docs/(design|reports|ISSUES|ROADMAP|PLANNING)|benchmarking/|papers/|platform-demos/|\bworkspace\b'
+        files: \.md$
+
+  # YAML formatting
+-   repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
+    rev: v2.16.0
+    hooks:
+    -   id: pretty-format-yaml
+        args: [--autofix, --indent, '4', --preserve-quotes]
+
+  # TOML formatting and sorting. One tool only: pretty-format-toml is built on the
+  # toml-sort library, and its hook environment pins whatever toml-sort was current
+  # when it was installed. Once that differs from the rev below, the two rewrite
+  # inline tables back and forth ({a = 1} vs { a = 1 }) on every run.
+-   repo: https://github.com/pappasam/toml-sort
+    rev: v0.25.0
+    hooks:
+    -   id: toml-sort
+        args: [-ia]

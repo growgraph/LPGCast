@@ -1,0 +1,14 @@
+schema:
+    metadata:
+        name: plant
+        version: 1.0.0
+    core_schema:
+        vertex_config:
+            vertices:
+            -   name: Machine
+                properties:
+                -   name: serial
+                    type: STRING
+                identity: [serial]
+        edge_config:
+            edges: []
