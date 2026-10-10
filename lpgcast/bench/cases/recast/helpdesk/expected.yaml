@@ -1,0 +1,56 @@
+recast-helpdesk-1:
+    vertices:
+        c:
+            type: Customer
+            quote: Customer ACC-3001
+            mention: true
+            props:
+                account: ACC-3001
+        t:
+            type: Ticket
+            quote: HD-6001
+            mention: true
+            props:
+                number: HD-6001
+        p:
+            type: Product
+            quote: product SKU-77
+            props:
+                sku: SKU-77
+                name: Desk Lamp
+        tag:
+            type: Tag
+            quote: hardware
+            props:
+                label: hardware
+    edges:
+    -   relation: RAISED
+        from: c
+        to: t
+        quote: Customer ACC-3001 raised HD-6001
+    -   relation: ABOUT
+        from: t
+        to: p
+        quote: HD-6001 about product SKU-77
+    -   relation: TAGGED
+        from: t
+        to: tag
+        quote: the ticket is tagged hardware
+recast-helpdesk-2:
+    vertices:
+        cm:
+            type: Comment
+            quote: Comment
+            props:
+                body: customer confirms the bulb is fine
+        t:
+            type: Ticket
+            quote: HD-6001
+            mention: true
+            props:
+                number: HD-6001
+    edges:
+    -   relation: 'ON'
+        from: cm
+        to: t
+        quote: Comment on HD-6001

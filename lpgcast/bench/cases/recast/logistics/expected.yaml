@@ -1,0 +1,60 @@
+recast-logistics-1:
+    vertices:
+        s:
+            type: Shipment
+            quote: Shipment TRK-6100
+            mention: true
+            props:
+                tracking: TRK-6100
+        a:
+            type: Warehouse
+            quote: depot HAM-1
+            mention: true
+            props:
+                code: HAM-1
+        b:
+            type: Warehouse
+            quote: depot OSL-3
+            mention: true
+            props:
+                code: OSL-3
+        c:
+            type: Carrier
+            quote: NordFreight
+            mention: true
+            props:
+                name: NordFreight
+    edges:
+    -   relation: SHIPPED_FROM
+        from: s
+        to: a
+        quote: Shipment TRK-6100 left depot HAM-1
+    -   relation: SHIPPED_TO
+        from: s
+        to: b
+        quote: for depot OSL-3
+    -   relation: CARRIED_BY
+        from: s
+        to: c
+        quote: carried by NordFreight
+recast-logistics-2:
+    vertices:
+        pl:
+            type: Pallet
+            quote: Pallet PL-301
+            props:
+                barcode: PL-301
+                layers:
+                    value: 4
+                    quote: 4 layers
+        s:
+            type: Shipment
+            quote: TRK-6100
+            mention: true
+            props:
+                tracking: TRK-6100
+    edges:
+    -   relation: LOADED_IN
+        from: pl
+        to: s
+        quote: is loaded in TRK-6100

@@ -1,0 +1,39 @@
+name: pre-commit
+
+on:
+    pull_request:
+    push:
+        branches: [main]
+
+concurrency:
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
+
+permissions:
+    contents: read
+
+jobs:
+    pre-commit:
+        runs-on: ubuntu-latest
+        steps:
+        -   uses: actions/checkout@v7
+        -   name: Install uv
+            uses: astral-sh/setup-uv@v10.2.0
+            with:
+                version: "0.12.21"
+                enable-cache: true
+        # Hook environments live in ~/.cache/pre-commit, outside uv's cache;
+        # keyed on the config so a pin change rebuilds and nothing else does.
+        -   name: Cache hook environments
+            uses: actions/cache@v6
+            with:
+                path: ~/.cache/pre-commit
+                key: pre-commit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
+        # Lint and formatting only; type checking runs in tests.yml, where the
+        # whole program is installed.
+        -   name: Install dependencies
+            run: uv sync --no-sources --group dev --no-install-project
+        -   name: Run pre-commit
+            run: uv run --no-sources pre-commit run --all-files
+            env:
+                SKIP: ty

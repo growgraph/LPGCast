@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Package skeleton**: `lpgcast` on Python ≥ 3.11 with six runtime dependencies (`graflo`, `openai`,
   `pydantic`, `pydantic-settings`, `click`, `pyyaml`).
 - **Settings** from `LPGCAST_LLM_*`, `LPGCAST_CACHE_*` and `LPGCAST_*` variables only; no `.env` file
-  is read.
+  is read. The default model is `gpt-5.6-luna`.
 - **`LLMClient.acomplete_json`**: one JSON object per request from any OpenAI-compatible endpoint;
   strict `json_schema` output with a `json_object` fallback, tolerant parsing, re-ask on malformed
   JSON, one re-issue on timeout, typed configuration errors.
@@ -51,3 +51,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   secondary-identity mentions and upserts through graflo's writer.
 - **CLI** `lpgcast cast`: graph, groundings, quarantine, episode results and a run manifest under
   `--out`; `--db` writes to a graflo connection; `--replay` makes no request.
+- **`LPGCaster.cast_episode`** returns an `EpisodeOutcome` that also carries the slice, the
+  first reply as checked and the attempt kept.
+- **Benchmark** `lpgcast-bench`: a versioned corpus of seven families in four domains with a
+  dev/test split and a pinned digest; exact scoring with no model as judge; an oracle row; a
+  fresh-call re-cast; JSON and Markdown reports with token counts and optional prices.
+- **Top-level API**: `from lpgcast import LPGCaster, load_schema, read_episodes, write_cast, ...`;
+  names load on first use, so `import lpgcast` stays light.
+- **Documentation site**: installation, quick start, how a cast works, identities and mentions,
+  groundings and quarantine, guides to schemas, replay, databases and the benchmark, and a
+  reference whose settings, command-line and Python pages are generated from the code.
+- **Examples**: `examples/tickets/` (a support-desk schema and five texts) and
+  `examples/connections/` (file backend and Neo4j).
+- **CI**: tests (with a check that a plain install imports and stays light), pre-commit, docs to
+  GitHub Pages, and PyPI publishing on release once enabled.

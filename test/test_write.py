@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 from conftest import DATA
 from graflo.connections.graflo_backend import GraFloBackendConfig
+from graflo.connections.onto import Neo4jConfig
 from graflo.db.manager import ConnectionManager
 
 from lpgcast.cast import LPGCaster
@@ -15,7 +16,6 @@ from lpgcast.write import load_connection, write_cast
 
 #: Path to a graflo connection YAML for a disposable Neo4j database. The test
 #: that uses it redefines the schema there, so never point it at real data.
-NEO4J_CONNECTION_ENV = "NEO4J_TEST_CONNECTION"
 
 
 def _v(ref, type_, quote, props=(), mention=False):
@@ -150,12 +150,9 @@ def test_load_connection(tmp_path):
 
 @pytest.mark.neo4j
 async def test_neo4j_recast_adds_no_vertices(cast):
-    path = os.environ.get(NEO4J_CONNECTION_ENV)
-    if not path:
-        pytest.skip(
-            f"set {NEO4J_CONNECTION_ENV} to a connection YAML for a disposable Neo4j"
-        )
-    conf = load_connection(Path(path))
+    if not os.environ.get("NEO4J_URI"):
+        pytest.skip("set NEO4J_URI (and NEO4J_USERNAME, NEO4J_PASSWORD)")
+    conf = Neo4jConfig()  # graflo reads NEO4J_* from the environment
     result = await cast([ANN], {"m1": [ANN_REPLY]})
     await write_cast(result, conf, recreate_schema=True)
     with ConnectionManager(connection_config=conf) as conn:
@@ -170,4 +167,15 @@ async def test_neo4j_recast_adds_no_vertices(cast):
             name: len(conn.fetch_all_docs(name))
             for name in ("Person", "Machine", "Note")
         }
+        edges = conn.fetch_all_edges("Person", "Machine", "OPERATES")
     assert after == before == {"Person": 1, "Machine": 1, "Note": 1}
+    assert len(edges) == 1
+
+
+@pytest.mark.parametrize(
+    ("name", "config_type"),
+    [("file-backend.yaml", GraFloBackendConfig), ("neo4j.yaml", Neo4jConfig)],
+)
+def test_the_example_connections_load(name, config_type):
+    path = Path(__file__).parents[1] / "examples" / "connections" / name
+    assert isinstance(load_connection(path), config_type)

@@ -11,11 +11,27 @@ dev = [
   "pytest>=9.0.2",
   "ty>=0.0.86"
 ]
+docs = [
+  "mkdocs-gen-files>=0.5.0",
+  "mkdocs-glightbox>=0.4.0",
+  "mkdocs-literate-nav>=0.6.2",
+  "mkdocs-material>=9.6.14",
+  "mkdocstrings-python>=2.0.3",
+  "mkdocstrings[python]>=0.29.1",
+  "properdocs>=1.6.7"
+]
 
 [project]
 classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
   "License :: OSI Approved :: Apache Software License",
-  "Programming Language :: Python :: 3"
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Scientific/Engineering :: Information Analysis",
+  "Topic :: Text Processing"
 ]
 dependencies = [
   "click>=8.2.0,<9",
@@ -26,6 +42,7 @@ dependencies = [
   "pyyaml>=6.0"
 ]
 description = "Text to labeled property graph against a governed GraFlo schema"
+keywords = ["graflo", "information-extraction", "knowledge-graph", "llm", "property-graph"]
 license = "Apache-2.0"
 name = "lpgcast"
 readme = "README.md"
@@ -39,7 +56,13 @@ server = []
 
 [project.scripts]
 lpgcast = "lpgcast.cli:main"
+lpgcast-bench = "lpgcast.bench.cli:main"
 text2lpg = "lpgcast.cli:main"
+
+[project.urls]
+Documentation = "https://growgraph.github.io/LPGCast/"
+Issues = "https://github.com/growgraph/LPGCast/issues"
+Repository = "https://github.com/growgraph/LPGCast"
 
 [tool.hatch.build.targets.wheel]
 packages = ["lpgcast"]
@@ -49,7 +72,7 @@ asyncio_default_fixture_loop_scope = "function"
 asyncio_mode = "auto"
 markers = [
   "llm: exercises a real language model (skipped unless --run-llm)",
-  "neo4j: writes to a disposable Neo4j named by NEO4J_TEST_CONNECTION (skipped otherwise)"
+  "neo4j: wipes the Neo4j named by NEO4J_URI (skipped unless --run-neo4j)"
 ]
 testpaths = ["test"]
 

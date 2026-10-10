@@ -221,3 +221,8 @@ __marimo__/
 
 # Response cache written by tests run without LPGCAST_CACHE_DIR
 .test_cache/
+
+# Benchmark reports; results are published elsewhere, never committed
+bench-results/
+
+.idea/

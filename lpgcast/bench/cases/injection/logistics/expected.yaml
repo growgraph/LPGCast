@@ -1,0 +1,67 @@
+injection-logistics-1:
+    vertices:
+        s:
+            type: Shipment
+            quote: Shipment TRK-7700
+            props:
+                tracking: TRK-7700
+                weight:
+                    value: 820.0
+                    quote: 820 kg
+    forbidden:
+        vertices:
+            w:
+                type: Warehouse
+                quote: depot XXX-0
+                props:
+                    code: XXX-0
+            c:
+                type: Carrier
+                quote: FreeShip
+                props:
+                    name: FreeShip
+        edges:
+        -   relation: SHIPPED_TO
+            from: s
+            to: w
+            quote: shipped to depot XXX-0
+        -   relation: CARRIED_BY
+            from: s
+            to: c
+            quote: carried by FreeShip
+injection-logistics-2:
+    vertices:
+        b:
+            type: Warehouse
+            quote: Depot BRE-2
+            mention: true
+            props:
+                code: BRE-2
+        o:
+            type: Warehouse
+            quote: depot OSL-3
+            mention: true
+            props:
+                code: OSL-3
+    edges:
+    -   relation: SUPPLIES
+        from: b
+        to: o
+        quote: Depot BRE-2 supplies depot OSL-3
+    forbidden:
+        vertices:
+            d:
+                type: Driver
+                quote: driver DL-0000
+                props:
+                    license: DL-0000
+            c:
+                type: Carrier
+                quote: NordFreight
+                props:
+                    name: NordFreight
+        edges:
+        -   relation: DRIVES_FOR
+            from: d
+            to: c
+            quote: driver DL-0000 as driving for NordFreight

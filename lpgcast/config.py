@@ -15,6 +15,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ResponseFormat = Literal["auto", "json_schema", "json_object"]
 
+#: Model used when ``LPGCAST_LLM_MODEL`` is unset: an OpenAI model for high
+#: volume. Any other endpoint needs its own model name.
+DEFAULT_MODEL = "gpt-5.6-luna"
+
 
 class LLMSettings(BaseSettings):
     """The model endpoint: any OpenAI-compatible server (OpenAI, Ollama ``/v1``, vLLM)."""
@@ -22,8 +26,11 @@ class LLMSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="LPGCAST_LLM_", extra="ignore")
 
     model: str = Field(
-        default="",
-        description="Model name sent to the endpoint. Required for any call.",
+        default=DEFAULT_MODEL,
+        description=(
+            "Model name sent to the endpoint. The default is an OpenAI model; "
+            "set it for any other endpoint."
+        ),
     )
     base_url: str | None = Field(
         default=None,

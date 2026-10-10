@@ -1,0 +1,38 @@
+direction-helpdesk-1:
+    vertices:
+        dup:
+            type: Ticket
+            quote: HD-2210
+            mention: true
+            props:
+                number: HD-2210
+        orig:
+            type: Ticket
+            quote: HD-2198
+            mention: true
+            props:
+                number: HD-2198
+    edges:
+    -   relation: DUPLICATE_OF
+        from: dup
+        to: orig
+        quote: HD-2210 was closed as a duplicate; the original report is HD-2198
+direction-helpdesk-2:
+    vertices:
+        kim:
+            type: Agent
+            quote: kim.n
+            mention: true
+            props:
+                handle: kim.n
+        raj:
+            type: Agent
+            quote: raj.p
+            mention: true
+            props:
+                handle: raj.p
+    edges:
+    -   relation: MENTORS
+        from: raj
+        to: kim
+        quote: kim.n is being mentored by raj.p

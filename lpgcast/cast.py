@@ -45,7 +45,13 @@ from lpgcast.resolve import (
     resolve,
     schema_ref,
 )
-from lpgcast.select import RetrievalMetrics, SelectionConfig, SelectionError, select
+from lpgcast.select import (
+    RetrievalMetrics,
+    Selection,
+    SelectionConfig,
+    SelectionError,
+    select,
+)
 from lpgcast.sink import MemoryQuarantineSink, QuarantineRecord, QuarantineSink
 from lpgcast.validate import Fix, Validation, validate
 
@@ -120,10 +126,21 @@ class CastResult(BaseModel):
     manifest: RunManifest
 
 
-class _Outcome(BaseModel):
+class EpisodeOutcome(BaseModel):
+    """One episode's result with the intermediate steps that produced it."""
+
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     result: EpisodeResult
+    selection: Selection | None = Field(
+        default=None, description="The slice; None when selection failed."
+    )
+    first: Validation | None = Field(
+        default=None, description="The first reply, checked; None when there was none."
+    )
+    validation: Validation | None = Field(
+        default=None, description="The attempt kept, after repairs."
+    )
     resolution: Resolution | None = None
 
 
@@ -173,8 +190,9 @@ class LPGCaster:
         message: str,
         *,
         raw: str | None = None,
+        sliced: Selection | None = None,
         **known: Any,
-    ) -> _Outcome:
+    ) -> EpisodeOutcome:
         await self.sink.write_records(
             [
                 QuarantineRecord(
@@ -188,13 +206,14 @@ class LPGCaster:
                 )
             ]
         )
-        return _Outcome(
+        return EpisodeOutcome(
             result=EpisodeResult(
                 source_id=episode.source_id, status="failed", failure=failure, **known
-            )
+            ),
+            selection=sliced,
         )
 
-    async def cast_episode(self, episode: Episode) -> _Outcome:
+    async def cast_episode(self, episode: Episode) -> EpisodeOutcome:
         """Cast one episode."""
         try:
             selection = select(self.schema, episode.text, self.selection)
@@ -219,14 +238,26 @@ class LPGCaster:
                 max_episode_tokens=self.settings.max_episode_tokens,
             )
         except EpisodeTooLongError as error:
-            return await self._fail(episode, "too_long", str(error), **known)
+            return await self._fail(
+                episode, "too_long", str(error), sliced=selection, **known
+            )
         except WireShapeError as error:
             return await self._fail(
-                episode, "wire_shape", str(error), raw=error.content, **known
+                episode,
+                "wire_shape",
+                str(error),
+                raw=error.content,
+                sliced=selection,
+                **known,
             )
         except LLMJsonParseError as error:
             return await self._fail(
-                episode, "unparseable", str(error), raw=error.doc, **known
+                episode,
+                "unparseable",
+                str(error),
+                raw=error.doc,
+                sliced=selection,
+                **known,
             )
 
         requests = extraction.completion.attempts
@@ -234,7 +265,7 @@ class LPGCaster:
             slice_, episode, user_instruction=self.settings.user_instruction
         )
         shape = instance_json_schema(slice_)
-        current = validate(extraction.wire, slice_, episode.text)
+        current = first = validate(extraction.wire, slice_, episode.text)
         current_reply = extraction.completion.content
         best, best_reply = current, current_reply
         repairs = 0
@@ -270,7 +301,7 @@ class LPGCaster:
         status: EpisodeStatus = (
             "ok" if not best.findings else "partial" if kept else "failed"
         )
-        return _Outcome(
+        return EpisodeOutcome(
             result=EpisodeResult(
                 source_id=episode.source_id,
                 status=status,
@@ -283,6 +314,9 @@ class LPGCaster:
                 fixes=best.fixes,
                 **known,
             ),
+            selection=selection,
+            first=first,
+            validation=best,
             resolution=resolution,
         )
 
@@ -331,7 +365,7 @@ class LPGCaster:
         items = list(episodes)
         gate = asyncio.Semaphore(self.max_concurrent_episodes)
 
-        async def _one(episode: Episode) -> _Outcome:
+        async def _one(episode: Episode) -> EpisodeOutcome:
             async with gate:
                 return await self.cast_episode(episode)
 
@@ -344,7 +378,9 @@ class LPGCaster:
         outcomes = [task.result() for task in tasks]
         return self._assemble(outcomes, usage)
 
-    def _assemble(self, outcomes: list[_Outcome], usage: UsageTracker) -> CastResult:
+    def _assemble(
+        self, outcomes: list[EpisodeOutcome], usage: UsageTracker
+    ) -> CastResult:
         resolutions = [o.resolution for o in outcomes if o.resolution is not None]
         container = merge_containers([r.container for r in resolutions])
         results = [o.result for o in outcomes]

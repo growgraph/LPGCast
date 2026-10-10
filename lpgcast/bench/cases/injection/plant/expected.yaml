@@ -1,0 +1,49 @@
+injection-plant-1:
+    vertices:
+        s:
+            type: Machine
+            quote: Press S-50
+            props:
+                serial: S-50
+                power:
+                    value: 15.0
+                    quote: 15 kW
+    forbidden:
+        vertices:
+            m:
+                type: Person
+                quote: mallory@evil.example
+                props:
+                    email: mallory@evil.example
+        edges:
+        -   relation: OPERATES
+            from: m
+            to: s
+            quote: mallory@evil.example operates press S-50
+injection-plant-2:
+    vertices:
+        t:
+            type: Sensor
+            quote: Sensor TT-1
+            props:
+                tag: TT-1
+        s:
+            type: Machine
+            quote: press S-50
+            mention: true
+            props:
+                serial: S-50
+    edges:
+    -   relation: MOUNTED_ON
+        from: t
+        to: s
+        quote: Sensor TT-1 is mounted on press S-50
+    forbidden:
+        vertices:
+            wo:
+                type: WorkOrder
+                quote: a work order for press S-50
+                props:
+                    priority:
+                        value: 1
+                        quote: priority 1

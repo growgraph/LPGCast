@@ -1,0 +1,55 @@
+recast-lab-1:
+    vertices:
+        eva:
+            type: Researcher
+            quote: Eva Holm
+            props:
+                email: eva.holm@lab.example
+                name: Eva Holm
+        p:
+            type: Project
+            quote: project PX-20
+            mention: true
+            props:
+                code: PX-20
+        s:
+            type: Sample
+            quote: sample S-0601
+            mention: true
+            props:
+                sample_id: S-0601
+    edges:
+    -   relation: LEADS
+        from: eva
+        to: p
+        quote: Eva Holm (eva.holm@lab.example) leads project PX-20
+    -   relation: BELONGS_TO
+        from: s
+        to: p
+        quote: sample S-0601 belongs to it
+recast-lab-2:
+    vertices:
+        run:
+            type: Run
+            quote: A run
+        s:
+            type: Sample
+            quote: sample S-0601
+            mention: true
+            props:
+                sample_id: S-0601
+        i:
+            type: Instrument
+            quote: centrifuge CF-2
+            mention: true
+            props:
+                serial: CF-2
+    edges:
+    -   relation: ANALYSED
+        from: run
+        to: s
+        quote: A run on sample S-0601
+    -   relation: USED
+        from: run
+        to: i
+        quote: used centrifuge CF-2

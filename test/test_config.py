@@ -3,7 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
-from lpgcast.config import CacheSettings, LLMSettings, LPGCastSettings
+from lpgcast.config import DEFAULT_MODEL, CacheSettings, LLMSettings, LPGCastSettings
 
 
 def test_reads_its_own_prefixes(monkeypatch, tmp_path):
@@ -27,7 +27,7 @@ def test_ignores_other_tools_variables(monkeypatch):
     monkeypatch.setenv("LLM_API_KEY", "other")
     monkeypatch.setenv("OPENAI_API_KEY", "other")
     settings = LLMSettings()
-    assert settings.model == ""
+    assert settings.model == DEFAULT_MODEL == "gpt-5.6-luna"
     assert settings.api_key is None
 
 

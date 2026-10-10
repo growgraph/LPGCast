@@ -1,0 +1,41 @@
+direction-logistics-1:
+    vertices:
+        ham:
+            type: Warehouse
+            quote: Depot HAM-1
+            mention: true
+            props:
+                code: HAM-1
+        bre:
+            type: Warehouse
+            quote: depot BRE-2
+            mention: true
+            props:
+                code: BRE-2
+    edges:
+    -   relation: SUPPLIES
+        from: bre
+        to: ham
+        quote: Depot HAM-1 is restocked from depot BRE-2
+        props:
+            lead_days:
+                value: 3
+                quote: 3 days
+direction-logistics-2:
+    vertices:
+        trk:
+            type: Shipment
+            quote: Shipment TRK-5501
+            mention: true
+            props:
+                tracking: TRK-5501
+        pl:
+            type: Pallet
+            quote: pallet PL-77
+            props:
+                barcode: PL-77
+    edges:
+    -   relation: LOADED_IN
+        from: pl
+        to: trk
+        quote: Shipment TRK-5501 contains pallet PL-77

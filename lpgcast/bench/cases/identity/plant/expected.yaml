@@ -1,0 +1,32 @@
+identity-plant-1:
+    vertices:
+        s20:
+            type: Machine
+            quote: press S-20
+            props:
+                serial: S-20
+        ola:
+            type: Person
+            quote: Ola Dahl
+            props:
+                email: ola.dahl@plant.example
+                name: Ola Dahl
+    edges:
+    -   relation: OPERATES
+        from: ola
+        to: s20
+        quote: Ola Dahl (ola.dahl@plant.example) took over operating it
+identity-plant-2:
+    vertices:
+        s21:
+            type: Machine
+            quote: press S-21
+            props:
+                serial: S-21
+    forbidden:
+        vertices:
+            caller:
+                type: Person
+                quote: Someone
+                props:
+                    phone: +47 555 0101

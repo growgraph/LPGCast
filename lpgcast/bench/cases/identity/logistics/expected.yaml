@@ -1,0 +1,39 @@
+identity-logistics-1:
+    vertices:
+        s:
+            type: Shipment
+            quote: shipment TRK-9001
+            mention: true
+            props:
+                tracking: TRK-9001
+        w:
+            type: Warehouse
+            quote: depot OSL-3
+            mention: true
+            props:
+                code: OSL-3
+    edges:
+    -   relation: SHIPPED_TO
+        from: s
+        to: w
+        quote: dropped shipment TRK-9001 off at depot OSL-3
+identity-logistics-2:
+    vertices:
+        d:
+            type: Driver
+            quote: Per Ek
+            props:
+                license: DL-55871
+                name: Per Ek
+                phone: +46 70 123 45
+        c:
+            type: Carrier
+            quote: NordFreight
+            mention: true
+            props:
+                name: NordFreight
+    edges:
+    -   relation: DRIVES_FOR
+        from: d
+        to: c
+        quote: Per Ek, licence DL-55871, phone +46 70 123 45, drives for NordFreight

@@ -1,0 +1,48 @@
+direction-lab-1:
+    vertices:
+        child:
+            type: Sample
+            quote: Aliquot S-0107
+            mention: true
+            props:
+                sample_id: S-0107
+        parent:
+            type: Sample
+            quote: sample S-0100
+            mention: true
+            props:
+                sample_id: S-0100
+    edges:
+    -   relation: DERIVED_FROM
+        from: child
+        to: parent
+        quote: Aliquot S-0107 was split from parent sample S-0100
+direction-lab-2:
+    vertices:
+        src:
+            type: Sample
+            quote: Specimen S-0212
+            mention: true
+            props:
+                sample_id: S-0212
+        a:
+            type: Sample
+            quote: S-0213
+            mention: true
+            props:
+                sample_id: S-0213
+        b:
+            type: Sample
+            quote: S-0214
+            mention: true
+            props:
+                sample_id: S-0214
+    edges:
+    -   relation: DERIVED_FROM
+        from: a
+        to: src
+        quote: Specimen S-0212 is the source of aliquots S-0213
+    -   relation: DERIVED_FROM
+        from: b
+        to: src
+        quote: Specimen S-0212 is the source of aliquots S-0213 and S-0214

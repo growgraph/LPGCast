@@ -1,0 +1,3 @@
+description: Natural and hash types with an integer property, cast twice.
+schema: logistics
+recast: true

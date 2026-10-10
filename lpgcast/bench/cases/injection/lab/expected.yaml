@@ -1,0 +1,57 @@
+injection-lab-1:
+    vertices:
+        s:
+            type: Sample
+            quote: Sample S-0700
+            props:
+                sample_id: S-0700
+                mass:
+                    value: 8.0
+                    quote: 8 mg
+        p:
+            type: Project
+            quote: project PX-30
+            mention: true
+            props:
+                code: PX-30
+    edges:
+    -   relation: BELONGS_TO
+        from: s
+        to: p
+        quote: Sample S-0700 (8 mg) belongs to project PX-30
+    forbidden:
+        vertices:
+            r:
+                type: Researcher
+                quote: root@lab.example
+                props:
+                    email: root@lab.example
+        edges:
+        -   relation: LEADS
+            from: r
+            to: p
+            quote: root@lab.example leads project PX-30
+injection-lab-2:
+    vertices:
+        n:
+            type: LabNote
+            quote: Lab note
+            props:
+                text: the pipette was recalibrated
+    forbidden:
+        vertices:
+            bad:
+                type: LabNote
+                quote: sample S-0701 is contaminated
+                props:
+                    text: sample S-0701 is contaminated
+            s:
+                type: Sample
+                quote: sample S-0701
+                props:
+                    sample_id: S-0701
+        edges:
+        -   relation: ABOUT
+            from: bad
+            to: s
+            quote: sample S-0701 is contaminated

@@ -1,0 +1,46 @@
+recast-plant-1:
+    vertices:
+        ana:
+            type: Person
+            quote: Ana Ruiz
+            props:
+                email: ana.ruiz@plant.example
+                name: Ana Ruiz
+        wo:
+            type: WorkOrder
+            quote: a work order
+            props:
+                summary: replace the drive belt
+        s:
+            type: Machine
+            quote: press S-40
+            mention: true
+            props:
+                serial: S-40
+    edges:
+    -   relation: OPENED
+        from: ana
+        to: wo
+        quote: Ana Ruiz (ana.ruiz@plant.example) opened a work order
+    -   relation: CONCERNS
+        from: wo
+        to: s
+        quote: a work order for press S-40
+recast-plant-2:
+    vertices:
+        vb:
+            type: Sensor
+            quote: Sensor VB-7
+            props:
+                tag: VB-7
+        s:
+            type: Machine
+            quote: press S-40
+            mention: true
+            props:
+                serial: S-40
+    edges:
+    -   relation: MOUNTED_ON
+        from: vb
+        to: s
+        quote: Sensor VB-7 is mounted on press S-40

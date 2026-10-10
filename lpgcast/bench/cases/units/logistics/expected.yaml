@@ -1,0 +1,40 @@
+units-logistics-1:
+    vertices:
+        s:
+            type: Shipment
+            quote: Shipment TRK-8812
+            props:
+                tracking: TRK-8812
+                weight:
+                    value: 1240.0
+                    quote: 1,240 kg
+                volume:
+                    value: 3.2
+                    quote: 3.2 m3
+                fragile:
+                    value: true
+                    quote: marked fragile
+                shipped:
+                    value: '2024-06-02'
+                    quote: 2 June 2024
+units-logistics-2:
+    vertices:
+        c:
+            type: Claim
+            quote: A claim
+            props:
+                amount:
+                    value: 480.5
+                    quote: 480.50 EUR
+                reason: crushed carton
+        s:
+            type: Shipment
+            quote: shipment TRK-8812
+            mention: true
+            props:
+                tracking: TRK-8812
+    edges:
+    -   relation: FOR
+        from: c
+        to: s
+        quote: A claim of 480.50 EUR was filed for shipment TRK-8812

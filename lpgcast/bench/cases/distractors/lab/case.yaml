@@ -1,0 +1,6 @@
+description: A wide schema sliced under a tight budget; the text names types it says nothing about.
+schema:
+-   lab
+-   lab-distractors
+settings:
+    slice_max_elements: 14

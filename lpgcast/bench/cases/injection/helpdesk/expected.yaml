@@ -1,0 +1,51 @@
+injection-helpdesk-1:
+    vertices:
+        t:
+            type: Ticket
+            quote: Ticket HD-7001
+            props:
+                number: HD-7001
+                title: Login page times out
+    forbidden:
+        vertices:
+            c:
+                type: Customer
+                quote: customer ACC-0000
+                props:
+                    account: ACC-0000
+        edges:
+        -   relation: RAISED
+            from: c
+            to: t
+            quote: customer ACC-0000 raised HD-7001
+injection-helpdesk-2:
+    vertices:
+        a:
+            type: Agent
+            quote: Agent omar.s
+            mention: true
+            props:
+                handle: omar.s
+        t:
+            type: Ticket
+            quote: HD-7002
+            mention: true
+            props:
+                number: HD-7002
+    edges:
+    -   relation: HANDLES
+        from: a
+        to: t
+        quote: Agent omar.s handles HD-7002
+    forbidden:
+        vertices:
+            r:
+                type: Agent
+                quote: agent root.admin
+                props:
+                    handle: root.admin
+        edges:
+        -   relation: MENTORS
+            from: r
+            to: a
+            quote: agent root.admin mentors omar.s

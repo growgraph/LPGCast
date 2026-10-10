@@ -1,0 +1,108 @@
+metadata:
+    name: lab
+    version: 1.0.0
+core_schema:
+    vertex_config:
+        vertices:
+        -   name: Sample
+            description: A physical sample.
+            semantics:
+                synonyms: [specimen, aliquot]
+            properties:
+            -   name: sample_id
+                type: STRING
+            -   name: mass
+                type: FLOAT
+                semantics:
+                    unit: mg
+            -   name: collected
+                type: DATETIME
+            -   name: frozen
+                type: BOOL
+            identity: [sample_id]
+        -   name: Instrument
+            description: A lab instrument.
+            semantics:
+                synonyms: [spectrometer, centrifuge, analyser]
+            properties:
+            -   name: serial
+                type: STRING
+            -   name: model
+                type: STRING
+            identity: [serial]
+        -   name: Researcher
+            description: A person working in the lab.
+            properties:
+            -   name: email
+                type: STRING
+            -   name: badge
+                type: STRING
+            -   name: name
+                type: STRING
+            identity: [email]
+            secondary_identities:
+            -   name: by_badge
+                fields: [badge]
+        -   name: Project
+            description: A research project.
+            properties:
+            -   name: code
+                type: STRING
+            -   name: title
+                type: STRING
+            identity: [code]
+        -   name: Reagent
+            description: A chemical identified by its CAS number.
+            properties:
+            -   name: cas
+                type: STRING
+            -   name: name
+                type: STRING
+            hash_identity_properties: [cas]
+        -   name: Run
+            description: One analysis run.
+            properties:
+            -   name: started
+                type: DATETIME
+            -   name: duration
+                type: FLOAT
+                semantics:
+                    unit: min
+            assigned: true
+        -   name: LabNote
+            description: A free-text observation.
+            properties:
+            -   name: text
+                type: STRING
+            blank: true
+    edge_config:
+        edges:
+        -   source: Researcher
+            target: Run
+            relation: PERFORMED
+        -   source: Run
+            target: Instrument
+            relation: USED
+        -   source: Run
+            target: Sample
+            relation: ANALYSED
+        -   source: Sample
+            target: Sample
+            relation: DERIVED_FROM
+        -   source: Sample
+            target: Project
+            relation: BELONGS_TO
+        -   source: Researcher
+            target: Project
+            relation: LEADS
+        -   source: Sample
+            target: Reagent
+            relation: CONTAINS
+            properties:
+            -   name: concentration
+                type: FLOAT
+                semantics:
+                    unit: mM
+        -   source: LabNote
+            target: Sample
+            relation: ABOUT

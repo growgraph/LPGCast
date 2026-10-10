@@ -1,0 +1,55 @@
+mention-plant-1:
+    vertices:
+        p:
+            type: Person
+            quote: the person on +47 555 0199
+            mention: true
+            props:
+                phone: +47 555 0199
+        s:
+            type: Machine
+            quote: Press S-30
+            mention: true
+            props:
+                serial: S-30
+    edges:
+    -   relation: OPERATES
+        from: p
+        to: s
+        quote: Press S-30 is now operated by the person on +47 555 0199
+mention-plant-2:
+    vertices:
+        n:
+            type: Note
+            quote: Note
+            props:
+                body: the guard is loose again
+        s:
+            type: Machine
+            quote: press S-30
+            mention: true
+            props:
+                serial: S-30
+    edges:
+    -   relation: ABOUT
+        from: n
+        to: s
+        quote: Note on press S-30
+mention-plant-3:
+    vertices:
+        s:
+            type: Machine
+            quote: press S-30
+            mention: true
+            props:
+                serial: S-30
+    forbidden:
+        vertices:
+            wo:
+                type: WorkOrder
+                quote: The work order for press S-30
+        edges:
+        -   relation: CONCERNS
+            from: wo
+            to: s
+            quote: The work order for press S-30

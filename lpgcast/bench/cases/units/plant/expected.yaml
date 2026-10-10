@@ -1,0 +1,55 @@
+units-plant-1:
+    vertices:
+        s12:
+            type: Machine
+            quote: Press S-12
+            props:
+                serial: S-12
+                power:
+                    value: 37.5
+                    quote: 37.5 kW
+                commissioned:
+                    value: '2024-03-04'
+                    quote: 4 March 2024
+units-plant-2:
+    vertices:
+        th:
+            type: Sensor
+            quote: Sensor TH-3
+            props:
+                tag: TH-3
+                max_temp:
+                    value: 1250.0
+                    quote: 1,250 °C
+        s12:
+            type: Machine
+            quote: press S-12
+            mention: true
+            props:
+                serial: S-12
+    edges:
+    -   relation: MOUNTED_ON
+        from: th
+        to: s12
+        quote: Sensor TH-3 on press S-12
+units-plant-3:
+    vertices:
+        wo:
+            type: WorkOrder
+            quote: Work order
+            props:
+                summary: replace hydraulic seal
+                priority:
+                    value: 2
+                    quote: priority 2
+        s12:
+            type: Machine
+            quote: press S-12
+            mention: true
+            props:
+                serial: S-12
+    edges:
+    -   relation: CONCERNS
+        from: wo
+        to: s12
+        quote: Work order "replace hydraulic seal" for press S-12

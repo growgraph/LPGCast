@@ -1,0 +1,55 @@
+mention-lab-1:
+    vertices:
+        r:
+            type: Researcher
+            quote: The researcher with badge B-2207
+            mention: true
+            props:
+                badge: B-2207
+        p:
+            type: Project
+            quote: project PX-11
+            mention: true
+            props:
+                code: PX-11
+    edges:
+    -   relation: LEADS
+        from: r
+        to: p
+        quote: The researcher with badge B-2207 now leads project PX-11
+mention-lab-2:
+    vertices:
+        n:
+            type: LabNote
+            quote: Lab note
+            props:
+                text: precipitate visible after thawing
+        s:
+            type: Sample
+            quote: S-0550
+            mention: true
+            props:
+                sample_id: S-0550
+    edges:
+    -   relation: ABOUT
+        from: n
+        to: s
+        quote: Lab note on S-0550
+mention-lab-3:
+    vertices:
+        s:
+            type: Sample
+            quote: sample S-0550
+            mention: true
+            props:
+                sample_id: S-0550
+    forbidden:
+        vertices:
+            run:
+                type: Run
+                quote: The run on sample S-0550
+        edges:
+        -   relation: ANALYSED
+            from: run
+            to: s
+            quote: The run on sample S-0550

@@ -1,0 +1,96 @@
+metadata:
+    name: plant
+    version: 1.0.0
+core_schema:
+    vertex_config:
+        vertices:
+        -   name: Machine
+            description: A production machine.
+            semantics:
+                synonyms: [station, press, lathe]
+            properties:
+            -   name: serial
+                type: STRING
+            -   name: power
+                type: FLOAT
+                semantics:
+                    unit: kW
+            -   name: commissioned
+                type: DATETIME
+            identity: [serial]
+        -   name: Line
+            description: A production line.
+            properties:
+            -   name: code
+                type: STRING
+            identity: [code]
+        -   name: Person
+            description: A worker at the plant.
+            semantics:
+                synonyms: [operator, technician, supervisor]
+            properties:
+            -   name: email
+                type: STRING
+            -   name: phone
+                type: STRING
+            -   name: name
+                type: STRING
+            identity: [email]
+            secondary_identities:
+            -   name: by_phone
+                fields: [phone]
+        -   name: WorkOrder
+            description: A maintenance work order.
+            properties:
+            -   name: summary
+                type: STRING
+            -   name: priority
+                type: INT
+            assigned: true
+        -   name: Note
+            description: A free-text remark about a machine.
+            properties:
+            -   name: body
+                type: STRING
+            blank: true
+        -   name: Sensor
+            description: A sensor mounted on a machine.
+            properties:
+            -   name: tag
+                type: STRING
+            -   name: kind
+                type: STRING
+            -   name: max_temp
+                type: FLOAT
+                semantics:
+                    unit: °C
+            hash_identity_properties: [tag]
+    edge_config:
+        edges:
+        -   source: Person
+            target: Machine
+            relation: OPERATES
+            properties:
+            -   name: since
+                type: DATETIME
+        -   source: Person
+            target: Person
+            relation: SUPERVISES
+        -   source: Person
+            target: WorkOrder
+            relation: OPENED
+        -   source: WorkOrder
+            target: Machine
+            relation: CONCERNS
+        -   source: Note
+            target: Machine
+            relation: ABOUT
+        -   source: Sensor
+            target: Machine
+            relation: MOUNTED_ON
+        -   source: Machine
+            target: Machine
+            relation: FEEDS
+        -   source: Machine
+            target: Line
+            relation: PART_OF

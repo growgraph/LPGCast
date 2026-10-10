@@ -1,0 +1,38 @@
+# Dev / test assignment: two instances of every family in each half.
+#
+# Tuning prompts, rules or selection against a case makes it part of what the
+# system was fitted to, so tuning happens on `dev` and a published figure comes
+# from `test`. Domains rotate across families, so each half holds every domain.
+# Moving a case between halves invalidates comparison with earlier runs, like
+# editing it: bump CORPUS_VERSION.
+
+dev:
+-   distractors/plant
+-   distractors/helpdesk
+-   direction/helpdesk
+-   direction/logistics
+-   units/logistics
+-   units/lab
+-   identity/lab
+-   identity/plant
+-   mention/plant
+-   mention/logistics
+-   recast/helpdesk
+-   recast/lab
+-   injection/plant
+-   injection/lab
+test:
+-   distractors/logistics
+-   distractors/lab
+-   direction/lab
+-   direction/plant
+-   units/plant
+-   units/helpdesk
+-   identity/helpdesk
+-   identity/logistics
+-   mention/helpdesk
+-   mention/lab
+-   recast/plant
+-   recast/logistics
+-   injection/helpdesk
+-   injection/logistics

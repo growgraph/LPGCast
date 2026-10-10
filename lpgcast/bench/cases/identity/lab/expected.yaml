@@ -1,0 +1,43 @@
+identity-lab-1:
+    vertices:
+        s:
+            type: Sample
+            quote: Sample S-0441
+            props:
+                sample_id: S-0441
+identity-lab-2:
+    vertices:
+        r:
+            type: Researcher
+            quote: The researcher with badge B-1182
+            mention: true
+            props:
+                badge: B-1182
+        run:
+            type: Run
+            quote: ran sample S-0441 on spectrometer SP-9
+        s:
+            type: Sample
+            quote: sample S-0441
+            mention: true
+            props:
+                sample_id: S-0441
+        i:
+            type: Instrument
+            quote: spectrometer SP-9
+            mention: true
+            props:
+                serial: SP-9
+    edges:
+    -   relation: PERFORMED
+        from: r
+        to: run
+        quote: The researcher with badge B-1182 ran
+    -   relation: ANALYSED
+        from: run
+        to: s
+        quote: ran sample S-0441
+    -   relation: USED
+        from: run
+        to: i
+        quote: on spectrometer SP-9

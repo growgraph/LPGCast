@@ -1,0 +1,42 @@
+distractors-lab-1:
+    vertices:
+        s:
+            type: Sample
+            quote: sample S-0800
+            mention: true
+            props:
+                sample_id: S-0800
+        p:
+            type: Project
+            quote: project PX-40
+            mention: true
+            props:
+                code: PX-40
+    edges:
+    -   relation: BELONGS_TO
+        from: s
+        to: p
+        quote: sample S-0800 belongs to project PX-40
+distractors-lab-2:
+    vertices:
+        s:
+            type: Sample
+            quote: sample S-0800
+            mention: true
+            props:
+                sample_id: S-0800
+        r:
+            type: Reagent
+            quote: acetone
+            props:
+                cas: 67-64-1
+                name: acetone
+    edges:
+    -   relation: CONTAINS
+        from: s
+        to: r
+        quote: sample S-0800 contains acetone (CAS 67-64-1) at 2 mM
+        props:
+            concentration:
+                value: 2.0
+                quote: 2 mM

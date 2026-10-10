@@ -1,0 +1,58 @@
+units-lab-1:
+    vertices:
+        s:
+            type: Sample
+            quote: Sample S-0330
+            props:
+                sample_id: S-0330
+                mass:
+                    value: 12.5
+                    quote: 12.5 mg
+                collected: '2024-02-29'
+                frozen:
+                    value: true
+                    quote: kept frozen
+units-lab-2:
+    vertices:
+        s:
+            type: Sample
+            quote: Sample S-0330
+            mention: true
+            props:
+                sample_id: S-0330
+        r:
+            type: Reagent
+            quote: ethanol
+            props:
+                cas: 64-17-5
+                name: ethanol
+    edges:
+    -   relation: CONTAINS
+        from: s
+        to: r
+        quote: Sample S-0330 contains ethanol (CAS 64-17-5) at 0.5 mM
+        props:
+            concentration:
+                value: 0.5
+                quote: 0.5 mM
+units-lab-3:
+    vertices:
+        run:
+            type: Run
+            quote: A run
+            props:
+                started: 2024-03-01T10:15
+                duration:
+                    value: 42.0
+                    quote: 42 min
+        s:
+            type: Sample
+            quote: sample S-0330
+            mention: true
+            props:
+                sample_id: S-0330
+    edges:
+    -   relation: ANALYSED
+        from: run
+        to: s
+        quote: analysing sample S-0330

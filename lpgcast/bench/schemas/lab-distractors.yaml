@@ -1,0 +1,104 @@
+# Types a lab text can brush against lexically without being about them.
+metadata:
+    name: lab-wide
+    version: 1.0.0
+core_schema:
+    vertex_config:
+        vertices:
+        -   name: Freezer
+            description: A storage freezer.
+            semantics:
+                synonyms: [fridge, cold store]
+            properties:
+            -   name: code
+                type: STRING
+            identity: [code]
+        -   name: Protocol
+            description: A written lab protocol.
+            semantics:
+                synonyms: [method, procedure, SOP]
+            properties:
+            -   name: code
+                type: STRING
+            identity: [code]
+        -   name: Grant
+            description: A research grant.
+            semantics:
+                synonyms: [funding]
+            properties:
+            -   name: number
+                type: STRING
+            identity: [number]
+        -   name: Supplier
+            description: A reagent supplier.
+            semantics:
+                synonyms: [vendor]
+            properties:
+            -   name: name
+                type: STRING
+            identity: [name]
+        -   name: Publication
+            description: A published paper.
+            semantics:
+                synonyms: [paper, article]
+            properties:
+            -   name: doi
+                type: STRING
+            identity: [doi]
+        -   name: Room
+            description: A lab room.
+            semantics:
+                synonyms: [bench, bay]
+            properties:
+            -   name: code
+                type: STRING
+            identity: [code]
+        -   name: Batch
+            description: A manufacturing batch of a reagent.
+            semantics:
+                synonyms: [lot]
+            properties:
+            -   name: lot
+                type: STRING
+            identity: [lot]
+        -   name: Training
+            description: A safety training.
+            properties:
+            -   name: title
+                type: STRING
+            identity: [title]
+        -   name: Order
+            description: A purchase order.
+            properties:
+            -   name: number
+                type: STRING
+            identity: [number]
+    edge_config:
+        edges:
+        -   source: Sample
+            target: Freezer
+            relation: STORED_IN
+        -   source: Run
+            target: Protocol
+            relation: FOLLOWED
+        -   source: Project
+            target: Grant
+            relation: FUNDED_BY
+        -   source: Supplier
+            target: Reagent
+            relation: SELLS
+        -   source: Project
+            target: Publication
+            relation: PUBLISHED
+        -   source: Instrument
+            target: Room
+            relation: INSTALLED_IN
+        -   source: Reagent
+            target: Batch
+            relation: FROM_BATCH
+        -   source: Researcher
+            target: Training
+            relation: COMPLETED
+        -   source: Researcher
+            target: Order
+            relation: ORDERED

@@ -1,0 +1,48 @@
+distractors-logistics-1:
+    vertices:
+        s:
+            type: Shipment
+            quote: shipment TRK-9100
+            mention: true
+            props:
+                tracking: TRK-9100
+        w:
+            type: Warehouse
+            quote: depot HAM-2
+            mention: true
+            props:
+                code: HAM-2
+        c:
+            type: Carrier
+            quote: NordFreight
+            mention: true
+            props:
+                name: NordFreight
+    edges:
+    -   relation: SHIPPED_FROM
+        from: s
+        to: w
+        quote: shipment TRK-9100 left depot HAM-2
+    -   relation: CARRIED_BY
+        from: s
+        to: c
+        quote: carried by NordFreight
+distractors-logistics-2:
+    vertices:
+        d:
+            type: Driver
+            quote: Lea Ott
+            props:
+                license: DL-7781
+                name: Lea Ott
+        c:
+            type: Carrier
+            quote: NordFreight
+            mention: true
+            props:
+                name: NordFreight
+    edges:
+    -   relation: DRIVES_FOR
+        from: d
+        to: c
+        quote: Lea Ott, licence DL-7781, drives for NordFreight

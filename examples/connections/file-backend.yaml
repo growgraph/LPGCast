@@ -1,0 +1,4 @@
+# graflo's file backend: a directory of chunked files, no server.
+# Every write appends, so a cast written twice is stored twice.
+db_type: graflo_backend
+output_dir: db/

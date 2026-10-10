@@ -1,0 +1,106 @@
+# Types a logistics text can brush against lexically without being about them.
+metadata:
+    name: logistics-wide
+    version: 1.0.0
+core_schema:
+    vertex_config:
+        vertices:
+        -   name: Truck
+            description: A truck of the fleet.
+            semantics:
+                synonyms: [lorry, van, trailer]
+            properties:
+            -   name: plate
+                type: STRING
+            identity: [plate]
+        -   name: Route
+            description: A planned route.
+            semantics:
+                synonyms: [lane, leg]
+            properties:
+            -   name: code
+                type: STRING
+            identity: [code]
+        -   name: Port
+            description: A seaport.
+            semantics:
+                synonyms: [harbour, terminal]
+            properties:
+            -   name: unlocode
+                type: STRING
+            identity: [unlocode]
+        -   name: Customs
+            description: A customs declaration.
+            semantics:
+                synonyms: [declaration]
+            properties:
+            -   name: number
+                type: STRING
+            identity: [number]
+        -   name: Invoice
+            description: A freight invoice.
+            properties:
+            -   name: number
+                type: STRING
+            identity: [number]
+        -   name: Container
+            description: A shipping container.
+            semantics:
+                synonyms: [box]
+            properties:
+            -   name: number
+                type: STRING
+            identity: [number]
+        -   name: Customer
+            description: A shipper or consignee.
+            semantics:
+                synonyms: [consignee, shipper]
+            properties:
+            -   name: name
+                type: STRING
+            identity: [name]
+        -   name: Product
+            description: A product in the catalogue.
+            semantics:
+                synonyms: [item, goods]
+            properties:
+            -   name: sku
+                type: STRING
+            identity: [sku]
+        -   name: Dock
+            description: A loading dock.
+            semantics:
+                synonyms: [bay, gate]
+            properties:
+            -   name: code
+                type: STRING
+            identity: [code]
+    edge_config:
+        edges:
+        -   source: Driver
+            target: Truck
+            relation: ASSIGNED_TO
+        -   source: Shipment
+            target: Route
+            relation: ON_ROUTE
+        -   source: Container
+            target: Port
+            relation: AT_PORT
+        -   source: Shipment
+            target: Customs
+            relation: DECLARED_IN
+        -   source: Carrier
+            target: Invoice
+            relation: ISSUED
+        -   source: Shipment
+            target: Container
+            relation: STUFFED_IN
+        -   source: Customer
+            target: Shipment
+            relation: BOOKED
+        -   source: Shipment
+            target: Product
+            relation: HOLDS
+        -   source: Warehouse
+            target: Dock
+            relation: HAS_DOCK

@@ -29,17 +29,23 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     parser.addoption(
         "--run-llm", action="store_true", help="run tests that call a real model"
     )
+    parser.addoption(
+        "--run-neo4j",
+        action="store_true",
+        help="run tests that wipe the Neo4j named by NEO4J_URI",
+    )
 
 
 def pytest_collection_modifyitems(
     config: pytest.Config, items: list[pytest.Item]
 ) -> None:
-    if config.getoption("--run-llm"):
-        return
-    skip = pytest.mark.skip(reason="needs --run-llm")
-    for item in items:
-        if "llm" in item.keywords:
-            item.add_marker(skip)
+    for marker, option in (("llm", "--run-llm"), ("neo4j", "--run-neo4j")):
+        if config.getoption(option):
+            continue
+        skip = pytest.mark.skip(reason=f"needs {option}")
+        for item in items:
+            if marker in item.keywords:
+                item.add_marker(skip)
 
 
 @pytest.fixture(autouse=True)

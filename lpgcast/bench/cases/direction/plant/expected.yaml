@@ -1,0 +1,38 @@
+direction-plant-1:
+    vertices:
+        p1:
+            type: Machine
+            quote: press P-1
+            mention: true
+            props:
+                serial: P-1
+        p2:
+            type: Machine
+            quote: Press P-2
+            mention: true
+            props:
+                serial: P-2
+    edges:
+    -   relation: FEEDS
+        from: p1
+        to: p2
+        quote: Press P-2 is fed by press P-1
+direction-plant-2:
+    vertices:
+        mara:
+            type: Person
+            quote: Mara Lind
+            props:
+                email: mara.lind@plant.example
+                name: Mara Lind
+        tom:
+            type: Person
+            quote: Tom Berg
+            props:
+                email: tom.berg@plant.example
+                name: Tom Berg
+    edges:
+    -   relation: SUPERVISES
+        from: tom
+        to: mara
+        quote: is supervised by Tom Berg

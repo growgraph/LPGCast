@@ -1,0 +1,41 @@
+distractors-plant-1:
+    vertices:
+        s:
+            type: Machine
+            quote: press S-60
+            mention: true
+            props:
+                serial: S-60
+        ana:
+            type: Person
+            quote: Ana Ruiz
+            props:
+                email: ana.ruiz@plant.example
+                name: Ana Ruiz
+    edges:
+    -   relation: OPERATES
+        from: ana
+        to: s
+        quote: Ana Ruiz (ana.ruiz@plant.example) has operated it since January 2023
+        props:
+            since:
+                value: 2023-01
+                quote: January 2023
+distractors-plant-2:
+    vertices:
+        t:
+            type: Sensor
+            quote: sensor PT-4
+            props:
+                tag: PT-4
+        s:
+            type: Machine
+            quote: press S-61
+            mention: true
+            props:
+                serial: S-61
+    edges:
+    -   relation: MOUNTED_ON
+        from: t
+        to: s
+        quote: sensor PT-4 is mounted on press S-61

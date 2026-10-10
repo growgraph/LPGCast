@@ -1,0 +1,36 @@
+identity-helpdesk-1:
+    vertices:
+        t:
+            type: Ticket
+            quote: ticket HD-4410
+            props:
+                number: HD-4410
+identity-helpdesk-2:
+    vertices:
+        c:
+            type: Customer
+            quote: Customer ACC-2291
+            props:
+                account: ACC-2291
+                name: Jo Park
+        t:
+            type: Ticket
+            quote: HD-4411
+            mention: true
+            props:
+                number: HD-4411
+        a:
+            type: Agent
+            quote: agent lena.k
+            mention: true
+            props:
+                handle: lena.k
+    edges:
+    -   relation: RAISED
+        from: c
+        to: t
+        quote: Customer ACC-2291 (Jo Park) raised HD-4411
+    -   relation: HANDLES
+        from: a
+        to: t
+        quote: agent lena.k handles it

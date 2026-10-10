@@ -1,0 +1,108 @@
+metadata:
+    name: logistics
+    version: 1.0.0
+core_schema:
+    vertex_config:
+        vertices:
+        -   name: Shipment
+            description: A consignment moved between warehouses.
+            semantics:
+                synonyms: [consignment, parcel]
+            properties:
+            -   name: tracking
+                type: STRING
+            -   name: weight
+                type: FLOAT
+                semantics:
+                    unit: kg
+            -   name: volume
+                type: FLOAT
+                semantics:
+                    unit: m3
+            -   name: shipped
+                type: DATETIME
+            -   name: fragile
+                type: BOOL
+            identity: [tracking]
+        -   name: Warehouse
+            description: A storage site.
+            semantics:
+                synonyms: [depot, hub]
+            properties:
+            -   name: code
+                type: STRING
+            -   name: city
+                type: STRING
+            identity: [code]
+        -   name: Carrier
+            description: A transport company.
+            properties:
+            -   name: name
+                type: STRING
+            identity: [name]
+        -   name: Driver
+            description: A truck driver.
+            properties:
+            -   name: license
+                type: STRING
+            -   name: phone
+                type: STRING
+            -   name: name
+                type: STRING
+            identity: [license]
+            secondary_identities:
+            -   name: by_phone
+                fields: [phone]
+        -   name: Pallet
+            description: A pallet with a printed barcode.
+            properties:
+            -   name: barcode
+                type: STRING
+            -   name: layers
+                type: INT
+            hash_identity_properties: [barcode]
+        -   name: Claim
+            description: A damage or loss claim.
+            properties:
+            -   name: amount
+                type: FLOAT
+                semantics:
+                    unit: EUR
+            -   name: reason
+                type: STRING
+            assigned: true
+        -   name: Incident
+            description: Something that went wrong in transit.
+            properties:
+            -   name: description
+                type: STRING
+            blank: true
+    edge_config:
+        edges:
+        -   source: Shipment
+            target: Warehouse
+            relation: SHIPPED_FROM
+        -   source: Shipment
+            target: Warehouse
+            relation: SHIPPED_TO
+        -   source: Shipment
+            target: Carrier
+            relation: CARRIED_BY
+        -   source: Driver
+            target: Carrier
+            relation: DRIVES_FOR
+        -   source: Pallet
+            target: Shipment
+            relation: LOADED_IN
+        -   source: Warehouse
+            target: Warehouse
+            relation: SUPPLIES
+            properties:
+            -   name: lead_days
+                type: INT
+        -   source: Incident
+            target: Shipment
+            relation: AFFECTS
+        -   source: Claim
+            target: Shipment
+            relation: FOR

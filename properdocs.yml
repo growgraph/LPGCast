@@ -1,0 +1,120 @@
+site_name: LPGCast
+site_description: Text to a labeled property graph, against a governed GraFlo schema
+site_url: https://growgraph.github.io/LPGCast
+repo_url: https://github.com/growgraph/LPGCast
+repo_name: growgraph/LPGCast
+copyright: Copyright &copy; 2026 GrowGraph
+edit_uri: edit/main/docs/
+theme:
+    name: material
+    # Colours are set in docs/stylesheets/extra.css.
+    palette:
+    -   media: '(prefers-color-scheme: light)'
+        scheme: default
+        primary: custom
+        accent: custom
+        toggle:
+            icon: material/toggle-switch-off-outline
+            name: Switch to dark mode
+    -   media: '(prefers-color-scheme: dark)'
+        scheme: slate
+        primary: custom
+        accent: custom
+        toggle:
+            icon: material/toggle-switch
+            name: Switch to light mode
+    font:
+        text: Source Sans 3
+        code: JetBrains Mono
+    logo: assets/logo.svg
+    icon:
+        repo: fontawesome/brands/github
+    favicon: assets/favicon.svg
+    features:
+    -   navigation.tabs
+    -   navigation.tabs.sticky
+    -   navigation.top
+    -   navigation.footer
+    -   toc.follow
+    -   content.code.copy
+    -   content.action.edit
+    -   search.highlight
+    -   search.suggest
+extra_css:
+-   https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700&display=swap
+-   stylesheets/extra.css
+exclude_docs: |
+    _build/
+plugins:
+# Underscores are separators, so a setting such as `LPGCAST_CACHE_REQUIRE_HIT`
+# is indexed as its words as well as whole.
+-   search:
+        separator: '[\s\-,:!=\[\]()"`/]+|\.(?!\d)|&[lg]t;|_'
+-   glightbox
+-   gen-files:
+        scripts:
+        -   docs/_build/gen_pages.py
+        -   docs/_build/gen_settings.py
+        -   docs/_build/gen_cli.py
+-   literate-nav
+-   mkdocstrings:
+        default_handler: python
+        handlers:
+            python:
+                options:
+                    show_root_full_path: true
+                    show_source: true
+                    show_root_toc_entry: false
+                    docstring_style: google
+                    show_category_heading: true
+                    show_if_no_docstring: true
+validation:
+    omitted_files: warn
+    absolute_links: warn
+    unrecognized_links: warn
+    anchors: warn
+nav:
+-   Home: index.md
+-   Getting started:
+    -   Installation: getting_started/installation.md
+    -   Quick start: getting_started/quickstart.md
+-   Concepts:
+    -   How a cast works: concepts/index.md
+    -   Identities and mentions: concepts/identities.md
+    -   Groundings and quarantine: concepts/groundings.md
+-   Guides:
+    -   Preparing a schema: guides/schema.md
+    -   Replay and the cache: guides/replay.md
+    -   Writing to a database: guides/database.md
+    -   The benchmark: guides/benchmark.md
+-   Reference:
+    -   Overview: reference/index.md
+    -   Settings: reference/settings.md
+    -   Command line: reference/cli.md
+    -   Output files: reference/output.md
+    -   Python API: reference/python/
+markdown_extensions:
+-   pymdownx.highlight:
+        anchor_linenums: true
+        line_spans: __span
+        pygments_lang_class: true
+-   pymdownx.inlinehilite
+-   pymdownx.snippets
+-   pymdownx.superfences
+-   attr_list
+-   md_in_html
+-   admonition
+-   footnotes
+-   meta
+-   def_list
+-   pymdownx.blocks.caption
+-   pymdownx.details
+-   pymdownx.tabbed:
+        alternate_style: true
+-   pymdownx.emoji
+-   pymdownx.keys
+-   pymdownx.magiclink
+-   pymdownx.betterem
+-   pymdownx.smartsymbols
+-   toc:
+        permalink: true

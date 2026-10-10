@@ -52,10 +52,34 @@ def test_import_loads_nothing_heavy():
         "import sys, lpgcast, lpgcast.cli, lpgcast.config, lpgcast.llm, lpgcast.episode, "
         "lpgcast.select, lpgcast.prompt, lpgcast.extract, lpgcast.validate, lpgcast.repair, "
         "lpgcast.resolve, lpgcast.ground, lpgcast.sink, lpgcast.cast, lpgcast.output, lpgcast.write, "
-        "lpgcast.schema_io\n"
+        "lpgcast.schema_io, lpgcast.bench.cli, lpgcast.bench.corpus, lpgcast.bench.score, "
+        "lpgcast.bench.oracle, lpgcast.bench.run, lpgcast.bench.report\n"
         f"print(','.join(m for m in {NOT_IMPORTED!r} if m in sys.modules))"
     )
     loaded = subprocess.run(
         [sys.executable, "-c", probe], capture_output=True, text=True, check=True
     ).stdout.strip()
     assert loaded == ""
+
+
+def test_the_top_level_names_resolve_lazily():
+    probe = (
+        "import sys, lpgcast\n"
+        "assert 'lpgcast.cast' not in sys.modules\n"
+        "from lpgcast import LPGCaster, load_schema, read_episodes, write_cast\n"
+        "assert 'lpgcast.cast' in sys.modules\n"
+        "print(','.join(m for m in "
+        f"{NOT_IMPORTED!r} if m in sys.modules))"
+    )
+    loaded = subprocess.run(
+        [sys.executable, "-c", probe], capture_output=True, text=True, check=True
+    )
+    assert loaded.stdout.strip() == ""
+
+
+def test_every_lazy_name_is_exported_and_resolves():
+    import lpgcast
+
+    assert set(lpgcast.__all__) == {"__version__", *lpgcast._EXPORTS}
+    for name in lpgcast._EXPORTS:
+        assert getattr(lpgcast, name) is not None

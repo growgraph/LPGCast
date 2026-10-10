@@ -1,0 +1,55 @@
+mention-helpdesk-1:
+    vertices:
+        c:
+            type: Customer
+            quote: The customer with email jo@acme.example
+            mention: true
+            props:
+                email: jo@acme.example
+        t:
+            type: Ticket
+            quote: HD-5120
+            mention: true
+            props:
+                number: HD-5120
+    edges:
+    -   relation: RAISED
+        from: c
+        to: t
+        quote: The customer with email jo@acme.example raised HD-5120
+mention-helpdesk-2:
+    vertices:
+        e:
+            type: Escalation
+            quote: escalated
+            props:
+                reason: the fix needs a database migration
+        t:
+            type: Ticket
+            quote: HD-5120
+            mention: true
+            props:
+                number: HD-5120
+    edges:
+    -   relation: ESCALATES
+        from: e
+        to: t
+        quote: HD-5120 is escalated
+mention-helpdesk-3:
+    vertices:
+        t:
+            type: Ticket
+            quote: HD-5120
+            mention: true
+            props:
+                number: HD-5120
+    forbidden:
+        vertices:
+            e:
+                type: Escalation
+                quote: The escalation on HD-5120
+        edges:
+        -   relation: ESCALATES
+            from: e
+            to: t
+            quote: The escalation on HD-5120

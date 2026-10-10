@@ -1,0 +1,3 @@
+description: Natural, hash and assigned types, cast twice.
+schema: plant
+recast: true

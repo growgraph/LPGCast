@@ -1,0 +1,35 @@
+units-helpdesk-1:
+    vertices:
+        t:
+            type: Ticket
+            quote: Ticket HD-3301
+            props:
+                number: HD-3301
+                severity:
+                    value: 2
+                    quote: severity 2
+                opened:
+                    value: 2024-05-14T09:30
+                    quote: 2024-05-14 09:30
+                resolved:
+                    value: true
+                    quote: 'resolved: yes'
+                wait:
+                    value: 5.5
+                    quote: 5.5 h
+units-helpdesk-2:
+    vertices:
+        t:
+            type: Ticket
+            quote: Ticket HD-3302
+            props:
+                number: HD-3302
+                opened:
+                    value: '2024-05-15'
+                    quote: 15 May 2024
+                severity:
+                    value: 3
+                    quote: severity three
+                resolved:
+                    value: false
+                    quote: not resolved

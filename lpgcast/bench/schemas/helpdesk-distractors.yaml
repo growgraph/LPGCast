@@ -1,0 +1,102 @@
+# Types a helpdesk text can brush against lexically without being about them.
+metadata:
+    name: helpdesk-wide
+    version: 1.0.0
+core_schema:
+    vertex_config:
+        vertices:
+        -   name: Invoice
+            description: A billing invoice.
+            semantics:
+                synonyms: [bill]
+            properties:
+            -   name: number
+                type: STRING
+            identity: [number]
+        -   name: Subscription
+            description: A product subscription.
+            semantics:
+                synonyms: [plan, licence]
+            properties:
+            -   name: code
+                type: STRING
+            identity: [code]
+        -   name: Release
+            description: A software release.
+            semantics:
+                synonyms: [version, update]
+            properties:
+            -   name: version
+                type: STRING
+            identity: [version]
+        -   name: Article
+            description: A knowledge-base article.
+            semantics:
+                synonyms: [guide, faq]
+            properties:
+            -   name: slug
+                type: STRING
+            identity: [slug]
+        -   name: Team
+            description: A team of agents.
+            semantics:
+                synonyms: [queue, group]
+            properties:
+            -   name: name
+                type: STRING
+            identity: [name]
+        -   name: Survey
+            description: A satisfaction survey.
+            properties:
+            -   name: code
+                type: STRING
+            identity: [code]
+        -   name: Refund
+            description: A refund to a customer.
+            properties:
+            -   name: reference
+                type: STRING
+            identity: [reference]
+        -   name: Feature
+            description: A requested product feature.
+            semantics:
+                synonyms: [request, idea]
+            properties:
+            -   name: title
+                type: STRING
+            identity: [title]
+        -   name: Order
+            description: A purchase order.
+            properties:
+            -   name: number
+                type: STRING
+            identity: [number]
+    edge_config:
+        edges:
+        -   source: Customer
+            target: Invoice
+            relation: BILLED
+        -   source: Customer
+            target: Subscription
+            relation: SUBSCRIBES
+        -   source: Product
+            target: Release
+            relation: HAS_RELEASE
+        -   source: Article
+            target: Product
+            relation: DOCUMENTS
+        -   source: Agent
+            target: Team
+            relation: MEMBER_OF
+        -   source: Customer
+            target: Survey
+            relation: ANSWERED
+        -   source: Customer
+            target: Refund
+            relation: RECEIVED
+        -   source: Customer
+            target: Feature
+            relation: REQUESTED
+        -   source: Customer
+            target: Order
+            relation: PLACED

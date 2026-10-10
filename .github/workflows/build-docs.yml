@@ -1,0 +1,54 @@
+name: Build GitHub Pages
+on:
+    push:
+        branches:
+        -   main
+        paths:
+        -   'docs/**'
+        -   'properdocs.yml'
+        -   'pyproject.toml'
+        -   'uv.lock'
+        -   'lpgcast/**'
+    workflow_dispatch:
+
+permissions:
+    contents: read
+
+# One deployment at a time; a newer push queues instead of cancelling one in flight.
+concurrency:
+    group: pages
+    cancel-in-progress: false
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+        steps:
+        -   name: Checkout code
+            uses: actions/checkout@v7
+        -   name: Install uv
+            uses: astral-sh/setup-uv@v10.2.0
+            with:
+                version: "0.12.21"
+                enable-cache: true
+        -   name: Install dependencies
+            run: uv sync --no-sources --group docs
+        -   name: Build site
+            run: uv run --no-sources properdocs build --strict --site-dir _site
+        -   name: Upload Pages artifact
+            uses: actions/upload-pages-artifact@v5
+            with:
+                path: _site
+
+    deploy:
+        needs: build
+        permissions:
+            pages: write
+            id-token: write
+        environment:
+            name: github-pages
+            url: ${{ steps.deployment.outputs.page_url }}
+        runs-on: ubuntu-latest
+        steps:
+        -   name: Deploy to GitHub Pages
+            id: deployment
+            uses: actions/deploy-pages@v5

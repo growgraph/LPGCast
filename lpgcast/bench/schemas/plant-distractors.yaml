@@ -1,0 +1,102 @@
+# Types a plant text can brush against lexically without being about them.
+metadata:
+    name: plant-wide
+    version: 1.0.0
+core_schema:
+    vertex_config:
+        vertices:
+        -   name: MachineModel
+            description: A machine model in the vendor catalogue.
+            semantics:
+                synonyms: [model, make]
+            properties:
+            -   name: code
+                type: STRING
+            identity: [code]
+        -   name: SparePart
+            description: A spare part kept in stock.
+            semantics:
+                synonyms: [seal, bearing, filter]
+            properties:
+            -   name: part_no
+                type: STRING
+            identity: [part_no]
+        -   name: Supplier
+            description: A company supplying parts.
+            semantics:
+                synonyms: [vendor]
+            properties:
+            -   name: name
+                type: STRING
+            identity: [name]
+        -   name: Vehicle
+            description: An in-plant vehicle.
+            semantics:
+                synonyms: [forklift, truck]
+            properties:
+            -   name: plate
+                type: STRING
+            identity: [plate]
+        -   name: Shift
+            description: A work shift.
+            properties:
+            -   name: code
+                type: STRING
+            identity: [code]
+        -   name: Room
+            description: A room or hall of the plant.
+            semantics:
+                synonyms: [hall, bay]
+            properties:
+            -   name: code
+                type: STRING
+            identity: [code]
+        -   name: Visitor
+            description: A visitor to the plant.
+            semantics:
+                synonyms: [guest, contractor]
+            properties:
+            -   name: name
+                type: STRING
+            identity: [name]
+        -   name: Training
+            description: A training course.
+            properties:
+            -   name: title
+                type: STRING
+            identity: [title]
+        -   name: Invoice
+            description: A supplier invoice.
+            properties:
+            -   name: number
+                type: STRING
+            identity: [number]
+    edge_config:
+        edges:
+        -   source: Machine
+            target: MachineModel
+            relation: INSTANCE_OF
+        -   source: SparePart
+            target: MachineModel
+            relation: FITS
+        -   source: Supplier
+            target: SparePart
+            relation: SUPPLIES
+        -   source: Person
+            target: Vehicle
+            relation: DRIVES
+        -   source: Person
+            target: Shift
+            relation: WORKS
+        -   source: Machine
+            target: Room
+            relation: LOCATED_IN
+        -   source: Visitor
+            target: Room
+            relation: VISITED
+        -   source: Person
+            target: Training
+            relation: COMPLETED
+        -   source: Supplier
+            target: Invoice
+            relation: ISSUED

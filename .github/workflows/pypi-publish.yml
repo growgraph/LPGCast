@@ -1,0 +1,45 @@
+name: Upload Python Package to PyPI
+
+on:
+    release:
+        types: [published]
+
+permissions:
+    contents: read
+
+jobs:
+    pypi-publish:
+        # Off until the `lpgcast` name is reserved on PyPI: set the repository
+        # variable PYPI_PUBLISH to `true` to turn publishing on.
+        if: vars.PYPI_PUBLISH == 'true'
+        runs-on: ubuntu-latest
+        environment:
+            name: pypi
+            url: https://pypi.org/p/lpgcast
+        permissions:
+            id-token: write
+
+        steps:
+        -   uses: actions/checkout@v7
+
+        -   name: Install uv
+            uses: astral-sh/setup-uv@v10.2.0
+            with:
+                version: "0.12.21"
+        # A release whose tag differs from the project version fails instead
+        # of publishing a version nobody tagged.
+        -   name: Verify tag matches pyproject version
+            run: |
+                project_version="$(uv version --short)"
+                tag_version="${GITHUB_REF_NAME#v}"
+                echo "pyproject: ${project_version} / tag: ${tag_version}"
+                if [ "${project_version}" != "${tag_version}" ]; then
+                  echo "::error::Release tag ${GITHUB_REF_NAME} does not match pyproject version ${project_version}"
+                  exit 1
+                fi
+        -   name: Build and publish
+            run: |
+                uv build --no-sources
+                uv publish
+            env:
+                UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}

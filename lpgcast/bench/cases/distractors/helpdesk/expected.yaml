@@ -1,0 +1,50 @@
+distractors-helpdesk-1:
+    vertices:
+        c:
+            type: Customer
+            quote: customer ACC-4100
+            mention: true
+            props:
+                account: ACC-4100
+        t:
+            type: Ticket
+            quote: HD-8100
+            mention: true
+            props:
+                number: HD-8100
+        p:
+            type: Product
+            quote: product SKU-310
+            mention: true
+            props:
+                sku: SKU-310
+    edges:
+    -   relation: RAISED
+        from: c
+        to: t
+        quote: customer ACC-4100 raised HD-8100
+    -   relation: ABOUT
+        from: t
+        to: p
+        quote: HD-8100 about product SKU-310
+distractors-helpdesk-2:
+    vertices:
+        a:
+            type: Agent
+            quote: agent sam.r
+            mention: true
+            props:
+                handle: sam.r
+        t:
+            type: Ticket
+            quote: HD-8100
+            mention: true
+            props:
+                number: HD-8100
+    edges:
+    -   relation: HANDLES
+        from: a
+        to: t
+        quote: agent sam.r has handled HD-8100 since 2024-07-01
+        props:
+            since: '2024-07-01'

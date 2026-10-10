@@ -1,0 +1,3 @@
+{"source_id": "mention-helpdesk-1", "text": "The customer with email jo@acme.example raised HD-5120."}
+{"source_id": "mention-helpdesk-2", "text": "HD-5120 is escalated to tier two because the fix needs a database migration."}
+{"source_id": "mention-helpdesk-3", "text": "The escalation on HD-5120 from yesterday has been withdrawn."}

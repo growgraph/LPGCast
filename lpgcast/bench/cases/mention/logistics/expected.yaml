@@ -1,0 +1,55 @@
+mention-logistics-1:
+    vertices:
+        d:
+            type: Driver
+            quote: The driver on +46 70 999 12
+            mention: true
+            props:
+                phone: +46 70 999 12
+        c:
+            type: Carrier
+            quote: NordFreight
+            mention: true
+            props:
+                name: NordFreight
+    edges:
+    -   relation: DRIVES_FOR
+        from: d
+        to: c
+        quote: The driver on +46 70 999 12 now drives for NordFreight
+mention-logistics-2:
+    vertices:
+        i:
+            type: Incident
+            quote: Incident
+            props:
+                description: arrived with a torn wrap
+        s:
+            type: Shipment
+            quote: shipment TRK-7020
+            mention: true
+            props:
+                tracking: TRK-7020
+    edges:
+    -   relation: AFFECTS
+        from: i
+        to: s
+        quote: 'Incident: shipment TRK-7020 arrived with a torn wrap'
+mention-logistics-3:
+    vertices:
+        s:
+            type: Shipment
+            quote: shipment TRK-7020
+            mention: true
+            props:
+                tracking: TRK-7020
+    forbidden:
+        vertices:
+            i:
+                type: Incident
+                quote: The incident on shipment TRK-7020
+        edges:
+        -   relation: AFFECTS
+            from: i
+            to: s
+            quote: The incident on shipment TRK-7020
