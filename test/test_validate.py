@@ -1,0 +1,238 @@
+"""Validation: every defect is a finding, deterministic fixes are recorded."""
+
+import copy
+from typing import Any
+
+import pytest
+from conftest import DATA
+
+from lpgcast.extract import WireExtraction
+from lpgcast.schema_io import load_schema
+from lpgcast.validate import validate
+
+TEXT = "Ann (ann@x.com) operates press S-7, rated 200 kW, since 2024-03. Call +1 555."
+
+GOOD: dict[str, Any] = {
+    "vertices": [
+        {
+            "ref": "v1",
+            "type": "Person",
+            "quote": "Ann (ann@x.com)",
+            "props": [{"name": "email", "value": "ann@x.com", "quote": "ann@x.com"}],
+        },
+        {
+            "ref": "v2",
+            "type": "Machine",
+            "quote": "press S-7",
+            "props": [
+                {"name": "serial", "value": "S-7", "quote": "S-7"},
+                {"name": "power", "value": "200 kW", "quote": "200 kW"},
+            ],
+        },
+    ],
+    "edges": [
+        {
+            "relation": "OPERATES",
+            "from": "v1",
+            "to": "v2",
+            "quote": "operates press S-7",
+            "props": [{"name": "since", "value": "2024-03", "quote": "2024-03"}],
+        }
+    ],
+    "unmapped": [{"quote": "Call +1 555", "note": "no call type"}],
+}
+
+
+@pytest.fixture
+def plant():
+    return load_schema(DATA / "plant.yaml")
+
+
+def _check(plant, reply, text=TEXT):
+    return validate(WireExtraction.model_validate(reply), plant, text)
+
+
+def _mutate(path, value):
+    reply = copy.deepcopy(GOOD)
+    target = reply
+    for key in path[:-1]:
+        target = target[key]
+    target[path[-1]] = value
+    return reply
+
+
+def _kinds(result):
+    return [(f.kind, f.scope, f.path) for f in result.findings]
+
+
+def test_a_good_reply_passes_with_coercion_recorded(plant):
+    result = _check(plant, GOOD)
+    assert result.findings == []
+    assert [v.props for v in result.vertices] == [
+        {"email": "ann@x.com"},
+        {"serial": "S-7", "power": 200.0},
+    ]
+    assert result.edges[0].edge_id == ("Person", "Machine", "OPERATES")
+    assert result.edges[0].props == {"since": "2024-03"}
+    assert [(f.kind, f.path) for f in result.fixes] == [
+        ("coerced", "vertices[1].props[1]")
+    ]
+    assert result.unmapped[0].span is not None
+
+
+def test_spans_point_at_the_quotes(plant):
+    result = _check(plant, GOOD)
+    machine = result.vertices[1]
+    assert TEXT[machine.span.start : machine.span.end] == "press S-7"
+    power = machine.prop_spans["power"]
+    assert TEXT[power.start : power.end] == "200 kW"
+
+
+def test_unknown_type_drops_the_vertex_and_its_edges(plant):
+    result = _check(plant, _mutate(("vertices", 0, "type"), "Robot"))
+    assert _kinds(result) == [
+        ("unknown_type", "vertex", "vertices[0]"),
+        ("endpoint_invalid", "edge", "edges[0]"),
+    ]
+    assert [f.kind for f in result.repairable] == ["unknown_type"]
+    assert result.edges == []
+
+
+def test_duplicate_ref(plant):
+    reply = copy.deepcopy(GOOD)
+    reply["vertices"][1]["ref"] = "v1"
+    assert ("duplicate_ref", "vertex", "vertices[1]") in _kinds(_check(plant, reply))
+
+
+def test_property_of_another_type_is_undeclared(plant):
+    reply = _mutate(
+        ("vertices", 1, "props", 1), {"name": "email", "value": "x", "quote": "S-7"}
+    )
+    result = _check(plant, reply)
+    assert _kinds(result) == [
+        ("undeclared_property", "property", "vertices[1].props[1]")
+    ]
+    assert result.vertices[1].props == {"serial": "S-7"}
+
+
+def test_bad_value_is_a_coercion_finding_with_its_kind(plant):
+    reply = _mutate(
+        ("vertices", 1, "props", 1),
+        {"name": "power", "value": "0.2 MW", "quote": "200 kW"},
+    )
+    finding = _check(plant, reply).findings[0]
+    assert (finding.kind, finding.detail) == ("coercion", "unit_mismatch")
+
+
+def test_duplicate_property(plant):
+    reply = copy.deepcopy(GOOD)
+    reply["vertices"][1]["props"].append(
+        {"name": "serial", "value": "S-8", "quote": "S-7"}
+    )
+    assert _kinds(_check(plant, reply)) == [
+        ("duplicate_property", "property", "vertices[1].props[2]")
+    ]
+
+
+def test_fabricated_quotes_are_findings(plant):
+    result = _check(plant, _mutate(("vertices", 1, "quote"), "the blue press"))
+    assert ("quote_not_found", "vertex", "vertices[1]") in _kinds(result)
+
+    reply = _mutate(("edges", 0, "props", 0, "quote"), "March 2024")
+    assert _kinds(_check(plant, reply)) == [
+        ("quote_not_found", "property", "edges[0].props[0]")
+    ]
+
+
+def test_normalised_quote_match_is_a_fix(plant):
+    result = _check(plant, _mutate(("vertices", 1, "quote"), "PRESS  s-7"))
+    assert result.findings == []
+    assert ("quote_normalized", "vertices[1]") in [
+        (f.kind, f.path) for f in result.fixes
+    ]
+
+
+def test_natural_identity_needs_a_key(plant):
+    reply = _mutate(("vertices", 0, "props"), [])
+    result = _check(plant, reply)
+    assert _kinds(result)[0] == ("identity_insufficient", "vertex", "vertices[0]")
+
+
+def test_dropping_an_identity_value_drops_the_vertex(plant):
+    reply = _mutate(
+        ("vertices", 0, "props"), [{"name": "email", "value": "x", "quote": "not here"}]
+    )
+    kinds = {k for k, _, _ in _kinds(_check(plant, reply))}
+    assert {"quote_not_found", "identity_insufficient"} <= kinds
+
+
+def test_hash_identity_needs_its_source_fields(plant):
+    reply = {"vertices": [{"ref": "s1", "type": "Sensor", "quote": "S-7", "props": []}]}
+    assert _kinds(_check(plant, reply)) == [
+        ("identity_insufficient", "vertex", "vertices[0]")
+    ]
+
+
+def test_assigned_and_blank_types_need_no_key(plant):
+    reply = {
+        "vertices": [
+            {"ref": "w1", "type": "WorkOrder", "quote": "S-7", "props": []},
+            {"ref": "n1", "type": "Note", "quote": "S-7", "props": []},
+        ]
+    }
+    assert _check(plant, reply).findings == []
+
+
+def test_mentions_need_a_full_primary_or_secondary_identity(plant):
+    by_phone = {
+        "ref": "v1",
+        "type": "Person",
+        "quote": "+1 555",
+        "mention": True,
+        "props": [{"name": "phone", "value": "+1 555", "quote": "+1 555"}],
+    }
+    assert _check(plant, {"vertices": [by_phone]}).findings == []
+
+    by_name = {**by_phone, "props": [{"name": "name", "value": "Ann", "quote": "Ann"}]}
+    assert _kinds(_check(plant, {"vertices": [by_name]})) == [
+        ("identity_insufficient", "vertex", "vertices[0]")
+    ]
+
+    work_order = {
+        "ref": "w",
+        "type": "WorkOrder",
+        "quote": "S-7",
+        "mention": True,
+        "props": [],
+    }
+    finding = _check(plant, {"vertices": [work_order]}).findings[0]
+    assert "cannot be referred to" in finding.message
+
+
+def test_reversed_edge_is_flipped_and_recorded(plant):
+    reply = copy.deepcopy(GOOD)
+    reply["edges"][0].update({"from": "v2", "to": "v1"})
+    result = _check(plant, reply)
+    assert result.findings == []
+    edge = result.edges[0]
+    assert (edge.source_ref, edge.target_ref) == ("v1", "v2")
+    assert [f.kind for f in result.fixes if f.path == "edges[0]"] == ["edge_reversed"]
+
+
+def test_undeclared_relation(plant):
+    result = _check(plant, _mutate(("edges", 0, "relation"), "OWNS"))
+    assert _kinds(result) == [("undeclared_edge", "edge", "edges[0]")]
+
+
+def test_dangling_ref(plant):
+    result = _check(plant, _mutate(("edges", 0, "to"), "v9"))
+    assert _kinds(result) == [("dangling_ref", "edge", "edges[0]")]
+
+
+def test_findings_are_ordered_by_kind_and_carry_fragments(plant):
+    reply = copy.deepcopy(GOOD)
+    reply["vertices"][1]["quote"] = "nowhere"
+    reply["vertices"][0]["type"] = "Robot"
+    result = _check(plant, reply)
+    assert [f.kind for f in result.findings][:2] == ["unknown_type", "quote_not_found"]
+    assert result.findings[0].fragment["type"] == "Robot"

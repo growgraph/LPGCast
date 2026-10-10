@@ -1,0 +1,68 @@
+metadata:
+    name: plant
+    version: 2.0.0
+core_schema:
+    vertex_config:
+        vertices:
+        -   name: Machine
+            description: A production machine.
+            semantics:
+                synonyms: [station, press]
+            properties:
+            -   name: serial
+                type: STRING
+            -   name: power
+                type: FLOAT
+                semantics:
+                    unit: kW
+            identity: [serial]
+        -   name: Person
+            properties:
+            -   name: email
+                type: STRING
+            -   name: phone
+                type: STRING
+            -   name: name
+                type: STRING
+            identity: [email]
+            secondary_identities:
+            -   name: by_phone
+                fields: [phone]
+        -   name: WorkOrder
+            description: A maintenance work order.
+            properties:
+            -   name: summary
+                type: STRING
+            assigned: true
+        -   name: Note
+            properties:
+            -   name: body
+                type: STRING
+            blank: true
+        -   name: Sensor
+            properties:
+            -   name: tag
+                type: STRING
+            -   name: kind
+                type: STRING
+            hash_identity_properties: [tag]
+    edge_config:
+        edges:
+        -   source: Person
+            target: Machine
+            relation: OPERATES
+            properties:
+            -   name: since
+                type: DATETIME
+        -   source: WorkOrder
+            target: Machine
+            relation: CONCERNS
+        -   source: Note
+            target: Machine
+            relation: ABOUT
+        -   source: Sensor
+            target: Machine
+            relation: MOUNTED_ON
+        -   source: Person
+            target: WorkOrder
+            relation: OPENED

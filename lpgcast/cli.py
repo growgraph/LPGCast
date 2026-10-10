@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from collections.abc import Iterable
 from pathlib import Path
@@ -12,6 +13,8 @@ from graflo.architecture.schema.context import instance_json_schema, render_type
 from lpgcast import __version__
 from lpgcast.config import LPGCastSettings
 from lpgcast.episode import Episode, read_episodes
+from lpgcast.llm.cache import CacheMissError
+from lpgcast.llm.client import LLMConfigurationError
 from lpgcast.schema_io import load_schema
 from lpgcast.select import SelectionConfig, SelectionError, select
 
@@ -123,3 +126,99 @@ def select_command(
         click.echo(json.dumps(record, ensure_ascii=False))
     if failed:
         raise SystemExit(1)
+
+
+@main.command()
+@click.option(
+    "--schema",
+    "schema_path",
+    required=True,
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="GraFlo schema or manifest (YAML or JSON).",
+)
+@click.option(
+    "--episodes",
+    "episodes_path",
+    required=True,
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="Episodes, one JSON object per line.",
+)
+@click.option(
+    "--out",
+    "out_dir",
+    required=True,
+    type=click.Path(file_okay=False, path_type=Path),
+    help="Directory for the graph, groundings, quarantine and manifest.",
+)
+@click.option(
+    "--db",
+    "db_path",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="graflo connection file (YAML); the graph is written there too.",
+)
+@click.option(
+    "--replay",
+    is_flag=True,
+    help="Serve every reply from the cache; a miss stops the run. Makes no request.",
+)
+@click.option(
+    "--recreate-schema",
+    is_flag=True,
+    help="Drop and redefine the schema on the --db target first.",
+)
+@click.option(
+    "--concurrency", default=8, show_default=True, help="Episodes cast at once."
+)
+def cast(
+    schema_path: Path,
+    episodes_path: Path,
+    out_dir: Path,
+    db_path: Path | None,
+    replay: bool,
+    recreate_schema: bool,
+    concurrency: int,
+) -> None:
+    """Cast EPISODES into SCHEMA and save the result under OUT.
+
+    Episodes that produce nothing are quarantined and the run goes on; a
+    misconfigured model, or a cache miss under --replay, stops it.
+    """
+    from lpgcast.cast import LPGCaster
+    from lpgcast.output import QUARANTINE_FILE, save_cast
+    from lpgcast.sink import JsonlQuarantineSink
+
+    settings = LPGCastSettings()
+    if replay:
+        settings.cache = settings.cache.model_copy(update={"require_hit": True})
+    out_dir.mkdir(parents=True, exist_ok=True)
+    quarantine = out_dir / QUARANTINE_FILE
+    quarantine.unlink(missing_ok=True)
+    caster = LPGCaster(
+        load_schema(schema_path),
+        settings=settings,
+        sink=JsonlQuarantineSink(quarantine),
+        max_concurrent_episodes=concurrency,
+    )
+    try:
+        result = asyncio.run(caster.cast(read_episodes(episodes_path)))
+    except (LLMConfigurationError, CacheMissError) as error:
+        raise click.ClickException(str(error)) from error
+
+    report = None
+    if db_path is not None:
+        from lpgcast.write import load_connection, write_cast
+
+        report = asyncio.run(
+            write_cast(
+                result, load_connection(db_path), recreate_schema=recreate_schema
+            )
+        )
+    save_cast(result, out_dir, write_report=report)
+    manifest = result.manifest
+    click.echo(
+        f"{manifest.episodes} episodes ({manifest.status['ok']} ok, "
+        f"{manifest.status['partial']} partial, {manifest.status['failed']} failed): "
+        f"{manifest.vertices} vertices, {manifest.edges} edges, "
+        f"{manifest.quarantined} quarantined, {manifest.unmapped} unmapped -> {out_dir}",
+        err=True,
+    )

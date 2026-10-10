@@ -33,3 +33,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`extract`**: one call per episode in the flat reply format, parsed into wire models; an episode
   over `LPGCAST_MAX_EPISODE_TOKENS` is refused before any call.
 - **CLI** `lpgcast select`: the slice each text would be cast against, as JSON lines or type sheets.
+- **Validation** (`validate`): unknown types and relations, properties not declared on their type,
+  values that do not coerce to their field type, insufficient identities, dangling refs and quotes
+  not found in the text are findings; values are coerced (declared units stripped), reversed edges
+  flipped and quotes matched ignoring case, accents and whitespace, each recorded as a fix.
+- **Typed repair**: at most two follow-up requests listing the findings by kind; the attempt that
+  keeps the most items wins.
+- **Quarantine sink** (`JsonlQuarantineSink`): left-out items, failed episodes and `unmapped`
+  entries, with the raw reply.
+- **Identity resolution and assembly** (`resolve`): natural keys, digests for hash and funnel types,
+  UUIDs derived from schema, episode, type and ref for assigned and blank types; mentions are never
+  written as vertices, and an edge to a mention known only by a secondary identity waits for a lookup.
+- **Groundings**: one per vertex, edge and property, with character offsets found from the quote.
+- **`LPGCaster`**: the whole pipeline over many episodes, concurrently; a misconfigured model or a
+  cache miss under replay stops the run.
+- **`write_cast`**: defines the schema on the target (reusing an existing one), looks up
+  secondary-identity mentions and upserts through graflo's writer.
+- **CLI** `lpgcast cast`: graph, groundings, quarantine, episode results and a run manifest under
+  `--out`; `--db` writes to a graflo connection; `--replay` makes no request.

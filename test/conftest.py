@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -88,25 +89,49 @@ def error(status: int, message: str, code: str | None = None) -> httpx.Response:
 Reply = str | dict | httpx.Response | Exception
 
 
+_EPISODE_ID = re.compile(r"<<<EPISODE id=(\S+) tag=")
+
+
 class FakeEndpoint:
-    """Replays scripted replies in order and records every request body.
+    """Replays scripted replies and records every request body.
 
     A ``dict`` reply is sent as JSON content, a ``str`` as raw content, an
     ``httpx.Response`` as is, and an exception is raised by the transport.
+    Replies are a list consumed in order, or a mapping from episode source id
+    to such a list, so concurrent episodes each get their own script.
     """
 
-    def __init__(self, replies: list[Reply]) -> None:
-        self.replies = list(replies)
+    def __init__(self, replies: list[Reply] | dict[str, list[Reply]]) -> None:
+        self.routes: dict[str, list[Reply]] = (
+            {key: list(value) for key, value in replies.items()}
+            if isinstance(replies, dict)
+            else {"": list(replies)}
+        )
         self.requests: list[dict[str, Any]] = []
         self.http_client = httpx.AsyncClient(
             transport=httpx.MockTransport(self._handle)
         )
 
+    @property
+    def replies(self) -> list[Reply]:
+        return self.routes.get("", [])
+
+    def _route(self, body: dict[str, Any]) -> str:
+        if "" in self.routes:
+            return ""
+        for message in body["messages"]:
+            found = _EPISODE_ID.search(message["content"])
+            if found:
+                return found.group(1)
+        return ""
+
     def _handle(self, request: httpx.Request) -> httpx.Response:
-        self.requests.append(json.loads(request.content))
-        if not self.replies:
+        body = json.loads(request.content)
+        self.requests.append(body)
+        script = self.routes.get(self._route(body))
+        if not script:
             return error(500, "no scripted reply left")
-        reply = self.replies.pop(0)
+        reply = script.pop(0)
         if isinstance(reply, Exception):
             raise reply
         if isinstance(reply, httpx.Response):
@@ -133,11 +158,12 @@ def make_client(
 
     def _build(
         *replies: Reply,
+        routes: dict[str, list[Reply]] | None = None,
         settings: LLMSettings | None = None,
         cache: CacheSettings | None = None,
         **overrides: Any,
     ) -> tuple[LLMClient, FakeEndpoint]:
-        endpoint = FakeEndpoint(list(replies))
+        endpoint = FakeEndpoint(routes if routes is not None else list(replies))
         base = settings or llm_settings
         if overrides:
             base = base.model_copy(update=overrides)

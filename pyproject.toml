@@ -9,7 +9,7 @@ dev = [
   "pre-commit>=4.6.2",
   "pytest-asyncio>=1.2.0",
   "pytest>=9.0.2",
-  "ty>=0.0.86",
+  "ty>=0.0.86"
 ]
 
 [project]
@@ -48,7 +48,8 @@ packages = ["lpgcast"]
 asyncio_default_fixture_loop_scope = "function"
 asyncio_mode = "auto"
 markers = [
-  "llm: exercises a real language model (skipped unless --run-llm)"
+  "llm: exercises a real language model (skipped unless --run-llm)",
+  "neo4j: writes to a disposable Neo4j named by NEO4J_TEST_CONNECTION (skipped otherwise)"
 ]
 testpaths = ["test"]
 
@@ -56,4 +57,4 @@ testpaths = ["test"]
 ignore = ["E722"]
 
 [tool.uv.sources]
-graflo = {editable = true, path = "../graflo"}
+graflo = { editable = true, path = "../graflo" }

@@ -50,7 +50,8 @@ def test_heavy_frameworks_are_not_installed():
 def test_import_loads_nothing_heavy():
     probe = (
         "import sys, lpgcast, lpgcast.cli, lpgcast.config, lpgcast.llm, lpgcast.episode, "
-        "lpgcast.select, lpgcast.prompt, lpgcast.extract, "
+        "lpgcast.select, lpgcast.prompt, lpgcast.extract, lpgcast.validate, lpgcast.repair, "
+        "lpgcast.resolve, lpgcast.ground, lpgcast.sink, lpgcast.cast, lpgcast.output, lpgcast.write, "
         "lpgcast.schema_io\n"
         f"print(','.join(m for m in {NOT_IMPORTED!r} if m in sys.modules))"
     )

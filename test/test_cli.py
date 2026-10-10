@@ -72,3 +72,79 @@ def test_select_reports_a_failure_and_exits_non_zero(monkeypatch):
 def test_select_needs_exactly_one_input():
     result = CliRunner().invoke(main, ["select", "--schema", str(DATA / "schema.yaml")])
     assert result.exit_code == 2
+
+
+def test_cast_replays_saves_and_writes(make_client, tmp_path, monkeypatch):
+    import asyncio
+
+    from test_cast import ANN, ANN_REPLY, NOTE, NOTE_REPLY
+
+    from lpgcast.cast import LPGCaster
+    from lpgcast.schema_io import load_schema
+
+    plant = DATA / "plant.yaml"
+    client, _ = make_client(routes={"m1": [ANN_REPLY], "m2": [NOTE_REPLY]})
+    asyncio.run(LPGCaster(load_schema(plant), client=client).cast([ANN, NOTE]))
+
+    episodes = tmp_path / "episodes.jsonl"
+    episodes.write_text(
+        "".join(e.model_dump_json(exclude_none=True) + "\n" for e in (ANN, NOTE))
+    )
+    conn = tmp_path / "conn.yaml"
+    conn.write_text(f"db_type: graflo_backend\noutput_dir: {tmp_path / 'db'}\n")
+    monkeypatch.setenv("LPGCAST_LLM_MODEL", client.settings.model)
+    monkeypatch.setenv("LPGCAST_LLM_BASE_URL", client.settings.base_url or "")
+    out = tmp_path / "out"
+
+    result = CliRunner().invoke(
+        main,
+        [
+            "cast",
+            "--schema",
+            str(plant),
+            "--episodes",
+            str(episodes),
+            "--out",
+            str(out),
+            "--db",
+            str(conn),
+            "--replay",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "2 episodes (2 ok, 0 partial, 0 failed)" in result.output
+    for name in (
+        "graph.json",
+        "groundings.jsonl",
+        "episodes.jsonl",
+        "manifest.json",
+        "quarantine.jsonl",
+        "write.json",
+    ):
+        assert (out / name).exists(), name
+    manifest = json.loads((out / "manifest.json").read_text())
+    assert manifest["usage"]["calls"] == 0
+    assert manifest["usage"]["cache_hits"] == 2
+    assert json.loads((out / "write.json").read_text())["vertices"]["Machine"] == 1
+
+
+def test_cast_replay_miss_is_a_clean_error(tmp_path, monkeypatch):
+    episodes = tmp_path / "episodes.jsonl"
+    episodes.write_text('{"source_id": "x", "text": "press S-7 at 200 kW"}\n')
+    monkeypatch.setenv("LPGCAST_LLM_MODEL", "fake-model")
+    result = CliRunner().invoke(
+        main,
+        [
+            "cast",
+            "--schema",
+            str(DATA / "plant.yaml"),
+            "--episodes",
+            str(episodes),
+            "--out",
+            str(tmp_path / "out"),
+            "--replay",
+        ],
+    )
+    assert result.exit_code == 1
+    assert "require hits" in result.output

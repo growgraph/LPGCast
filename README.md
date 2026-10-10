@@ -4,13 +4,14 @@ Text to a labeled property graph, against a governed [GraFlo](https://github.com
 schema: short texts and their source metadata in, typed vertices and edges out, each grounded in a
 quote from the text.
 
-**Status: early development.** Schema selection, the prompt and the extraction call are in place;
-validation, identity resolution and writing (`lpgcast cast`) are not yet.
+**Status: early development, not yet released.**
 
 ```bash
 uv sync --group dev
-uv run lpgcast sheet --schema schema.yaml                 # what a model is shown; no model call
-uv run lpgcast sheet --schema schema.yaml --json-schema   # the reply format
+uv run lpgcast cast --schema schema.yaml --episodes episodes.jsonl --out out/   # extract
+uv run lpgcast cast ... --db conn.yaml        # and write to a graflo connection
+uv run lpgcast cast ... --replay              # rerun from the cache; makes no request
+uv run lpgcast sheet --schema schema.yaml     # what a model is shown; no model call
 uv run lpgcast select --schema schema.yaml --episodes episodes.jsonl   # the slice per text
 uv run pytest
 ```
@@ -20,6 +21,29 @@ An episodes file holds one JSON object per line:
 ```json
 {"source_id": "msg-1", "text": "Ann now operates station S-7.", "reference_time": "2024-03-04T09:15:00Z"}
 ```
+
+A connection file is a graflo connection config, e.g. `db_type: graflo_backend` with
+`output_dir: db/`, or `db_type: neo4j` with `uri`, `username` and `password`.
+
+## What a cast does
+
+Per episode: choose the slice of the schema the text is about; ask the model once, in a flat reply
+format; check the reply (types, relations, properties, values, identities, and every quote against
+the text); ask for corrections at most twice; quarantine what still fails; compute identities;
+assemble a graflo `GraphContainer`. Under `--out`:
+
+| File | Holds |
+|---|---|
+| `graph.json` | the schema and the graph |
+| `groundings.jsonl` | the text span of every vertex, edge and property |
+| `quarantine.jsonl` | items left out, failed episodes, and `unmapped` text no type covers |
+| `pending.jsonl` | edges to an entity named only by a secondary identity, resolved at write |
+| `episodes.jsonl` | one result per episode |
+| `manifest.json` | versions, settings, counts and token usage |
+
+Everything but `manifest.json` is byte-identical when a cast is replayed. An entity the text only
+refers to is looked up, never created. Writing upserts by identity, so writing a cast twice changes
+nothing in a database that upserts; graflo's file backend appends instead.
 
 ## Model settings
 
