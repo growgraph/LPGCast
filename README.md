@@ -4,6 +4,8 @@
 
 [![tests](https://img.shields.io/github/actions/workflow/status/growgraph/LPGCast/tests.yml?branch=main&label=tests)](https://github.com/growgraph/LPGCast/actions/workflows/tests.yml)
 [![pre-commit](https://img.shields.io/github/actions/workflow/status/growgraph/LPGCast/pre-commit.yml?branch=main&label=pre-commit)](https://github.com/growgraph/LPGCast/actions/workflows/pre-commit.yml)
+[![PyPI](https://img.shields.io/pypi/v/lpgcast?color=224777)](https://pypi.org/project/lpgcast/)
+[![Python](https://img.shields.io/pypi/pyversions/lpgcast?color=224777)](https://pypi.org/project/lpgcast/)
 [![Docs](https://img.shields.io/badge/docs-growgraph.github.io-224777)](https://growgraph.github.io/LPGCast/)
 [![License](https://img.shields.io/badge/license-Apache--2.0-224777)](https://github.com/growgraph/LPGCast/blob/main/LICENSE)
 
@@ -15,12 +17,12 @@ and property keeps the quote it was read from.
 OntoCast builds and evolves an ontology from documents and writes RDF; LPGCast casts short,
 frequent texts into a property-graph schema you already govern.
 
-**Status: early development, not yet released.**
+**Status: alpha.** The API may change between minor releases.
 
 ## Quick start
 
 ```bash
-uv add lpgcast        # until the first release: git clone, then uv sync --group dev
+uv add lpgcast        # or: pip install lpgcast
 ```
 
 Point it at any OpenAI-compatible endpoint:
@@ -35,7 +37,7 @@ export LPGCAST_LLM_MODEL=qwen3:8b
 export LPGCAST_LLM_API_KEY=local
 ```
 
-Then, with the example in [`examples/tickets/`](examples/tickets/):
+Then, from a clone of the repository, with the example in [`examples/tickets/`](https://github.com/growgraph/LPGCast/tree/main/examples/tickets):
 
 ```bash
 lpgcast sheet  --schema examples/tickets/schema.yaml        # what the model is shown; no call

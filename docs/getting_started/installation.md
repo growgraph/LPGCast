@@ -6,7 +6,7 @@ LPGCast needs Python 3.11 or later and graflo 1.17 or later.
 uv add lpgcast        # or: pip install lpgcast
 ```
 
-Until the first release is on PyPI, install from a clone:
+To work on LPGCast or run the examples, install from a clone:
 
 ```bash
 git clone https://github.com/growgraph/LPGCast
