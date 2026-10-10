@@ -22,6 +22,7 @@ docs = [
 ]
 
 [project]
+authors = [{ email = "alexander@growgraph.dev", name = "Alexander Belikov" }]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Intended Audience :: Developers",

@@ -9,14 +9,23 @@ on:
         -   'pyproject.toml'
         -   'uv.lock'
         -   'lpgcast/**'
+    # A pull request builds the site strictly but does not deploy it.
+    pull_request:
+        paths:
+        -   'docs/**'
+        -   'properdocs.yml'
+        -   'pyproject.toml'
+        -   'uv.lock'
+        -   'lpgcast/**'
     workflow_dispatch:
 
 permissions:
     contents: read
 
 # One deployment at a time; a newer push queues instead of cancelling one in flight.
+# Each pull request builds in its own group.
 concurrency:
-    group: pages
+    group: pages-${{ github.event_name == 'pull_request' && github.ref || 'deploy' }}
     cancel-in-progress: false
 
 jobs:
@@ -35,12 +44,14 @@ jobs:
         -   name: Build site
             run: uv run --no-sources properdocs build --strict --site-dir _site
         -   name: Upload Pages artifact
+            if: github.event_name != 'pull_request'
             uses: actions/upload-pages-artifact@v5
             with:
                 path: _site
 
     deploy:
         needs: build
+        if: github.event_name != 'pull_request'
         permissions:
             pages: write
             id-token: write
