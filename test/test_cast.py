@@ -1,10 +1,12 @@
 """The whole cast, against a scripted endpoint."""
 
 import copy
+import json
 from typing import Any
 
+import httpx
 import pytest
-from conftest import DATA
+from conftest import DATA, completion, error
 
 from lpgcast.cast import LPGCaster
 from lpgcast.config import CacheSettings, LPGCastSettings
@@ -157,7 +159,8 @@ async def test_unrepaired_items_are_quarantined_and_the_rest_written(make_caster
     result = await caster.cast([ANN])
 
     episode = result.episodes[0]
-    assert (episode.status, episode.repairs, episode.requests) == ("partial", 2, 3)
+    # The repair came back with the same finding, so no second repair is asked for.
+    assert (episode.status, episode.repairs, episode.requests) == ("partial", 1, 2)
     assert result.output.data.vertices["Machine"] == [{"serial": "S-7"}]
     record = sink.records[0]
     assert (record.record, record.kind, record.detail) == (
@@ -167,7 +170,85 @@ async def test_unrepaired_items_are_quarantined_and_the_rest_written(make_caster
     )
     assert record.path == "vertices[1].props[1]"
     assert record.raw_output is not None and "very high" in record.raw_output
-    assert record.attempts == 3
+    assert record.attempts == 2
+
+
+async def test_a_changed_finding_earns_a_second_repair(make_caster):
+    bad = copy.deepcopy(ANN_REPLY)
+    bad["vertices"][1]["props"][1]["value"] = "very high"
+    worse = copy.deepcopy(bad)
+    worse["vertices"][1]["props"][1]["value"] = "rather high"
+    caster, endpoint, _sink = make_caster({"m1": [bad, worse, ANN_REPLY]})
+    result = await caster.cast([ANN])
+    episode = result.episodes[0]
+    assert (episode.status, episode.repairs, len(endpoint.requests)) == ("ok", 2, 3)
+
+
+def _cut(content: str = '{"vertices": [') -> httpx.Response:
+    return httpx.Response(200, json=completion(content, finish_reason="length"))
+
+
+@pytest.mark.parametrize(
+    ("reply", "kind"),
+    [
+        (error(429, "Rate limit reached"), "provider_error"),
+        (error(500, "The server had an error"), "provider_error"),
+        (
+            error(400, "This model's maximum context length is 8192 tokens"),
+            "provider_error",
+        ),
+        (_cut(), "truncated"),
+        (
+            httpx.Response(200, json=completion("", refusal="I can't help with that.")),
+            "refused",
+        ),
+    ],
+)
+async def test_a_provider_fault_fails_one_episode_and_the_run_goes_on(
+    make_caster, reply, kind
+):
+    caster, _, sink = make_caster({"m1": [reply], "m2": [NOTE_REPLY]})
+    result = await caster.cast([ANN, NOTE])
+
+    assert [(e.status, e.failure) for e in result.episodes] == [
+        ("failed", kind),
+        ("ok", None),
+    ]
+    assert result.manifest.status == {"ok": 1, "partial": 0, "failed": 1}
+    record = sink.records[0]
+    assert (record.record, record.source_id, record.kind) == ("episode", "m1", kind)
+
+
+async def test_a_second_timeout_fails_one_episode(make_caster):
+    slow = httpx.ReadTimeout("slow")
+    caster, _, _ = make_caster({"m1": [slow, slow], "m2": [NOTE_REPLY]})
+    result = await caster.cast([ANN, NOTE])
+    assert [e.failure for e in result.episodes] == ["provider_error", None]
+
+
+async def test_a_truncated_reply_is_kept_in_the_quarantine(make_caster):
+    caster, _, sink = make_caster({"m1": [_cut('{"vertices": [{"ref"')]})
+    await caster.cast([ANN])
+    assert sink.records[0].raw_output == '{"vertices": [{"ref"'
+
+
+@pytest.mark.parametrize(
+    ("fault", "kind"),
+    [
+        (error(503, "Service unavailable"), "provider_error"),
+        (_cut(), "truncated"),
+    ],
+)
+async def test_a_fault_during_repair_keeps_the_first_reply(make_caster, fault, kind):
+    bad = copy.deepcopy(ANN_REPLY)
+    bad["vertices"][1]["props"][1]["value"] = "very high"
+    caster, _, sink = make_caster({"m1": [bad, fault]})
+    result = await caster.cast([ANN])
+
+    episode = result.episodes[0]
+    assert (episode.status, episode.repair_failure) == ("partial", kind)
+    assert episode.vertices == 2
+    assert [r.kind for r in sink.records] == ["coercion"]
 
 
 async def test_an_obeyed_injection_is_quarantined_and_writes_nothing(make_caster):
@@ -241,6 +322,21 @@ async def test_replay_is_byte_identical_and_makes_no_request(make_caster, tmp_pa
         assert (tmp_path / "a" / name).read_bytes() == (
             tmp_path / "b" / name
         ).read_bytes(), name
+
+
+async def test_quarantine_is_written_in_episode_order(make_caster, tmp_path):
+    bad = copy.deepcopy(ANN_REPLY)
+    bad["vertices"][1]["props"][1]["value"] = "very high"
+    path = tmp_path / "quarantine.jsonl"
+    caster, _, _ = make_caster(
+        {"m1": [bad, bad], "m3": [OBEYED, OBEYED]},
+        sink=JsonlQuarantineSink(path),
+        client={"delays": {"m1": 0.05}},
+    )
+    await caster.cast([ANN, INJECTION])
+    order = [json.loads(line)["source_id"] for line in path.read_text().splitlines()]
+    assert order == sorted(order)
+    assert order[0] == "m1" and order[-1] == "m3"
 
 
 async def test_replay_of_an_unseen_episode_stops_the_run(make_caster):

@@ -8,6 +8,7 @@ lpgcast-bench                              # the oracle row only; free
 lpgcast-bench --model gpt-5.6-luna         # plus a model row (LPGCAST_LLM_* settings)
 lpgcast-bench --split test --model a --model b
 lpgcast-bench --model a --replay           # from the cache; makes no request
+lpgcast-bench compare a.json b.json        # read run b against run a
 ```
 
 Each run writes `<stamp>.json` (counts per episode, rates per case and row) and `<stamp>.md`
@@ -73,6 +74,16 @@ counts as well; the oracle row separates the two.
 Entities match by identity: a natural type's key, a hash type's digest, or any complete secondary
 identity. An assigned or blank type matches by equal property values or an overlapping quote.
 Values compare after coercion by their field; strings ignore case and runs of whitespace.
+
+## Comparing two runs
+
+`lpgcast-bench compare A.json B.json` reads run B against run A. Episodes pair on case and source
+id, and only paired episodes count; the rest are listed. For each rate it gives A, B and B − A
+over the pooled counts, with a 95% paired bootstrap interval: episodes are resampled together
+with their pair, so an interval that spans zero says the corpus cannot tell the two runs apart.
+Per episode it counts score rises and falls, tabulates status changes and lists the largest
+drops and rises. Reports from different corpora are refused. `--row-a` and `--row-b` pick a row
+when a report holds more than one model; `--json` also writes the comparison as JSON.
 
 ## Adding a case
 

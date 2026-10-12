@@ -57,7 +57,10 @@ lines = [
 assert isinstance(lpgcast, click.Group)
 for name, command in lpgcast.commands.items():
     lines += _section(command, f"lpgcast {name}")
-lines += _section(bench, "lpgcast-bench")
+assert isinstance(bench, click.Group)
+for name, command in bench.commands.items():
+    invocation = "lpgcast-bench" if name == "run" else f"lpgcast-bench {name}"
+    lines += _section(command, invocation)
 
 with mkdocs_gen_files.open("reference/cli.md", "w") as f:
     f.write("\n".join(lines))

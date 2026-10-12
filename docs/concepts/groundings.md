@@ -24,8 +24,8 @@ that is there.
 
 ## Quarantine
 
-Nothing is dropped silently. `quarantine.jsonl` holds one record per item left
-out, per failed episode, and per `unmapped` entry:
+`quarantine.jsonl` holds one record per item left out, per failed episode, and
+per `unmapped` entry, in episode order:
 
 | `record` | Means |
 |---|---|

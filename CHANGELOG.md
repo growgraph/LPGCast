@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **`lpgcast-bench compare A.json B.json`**: run B read against run A episode by episode, with
+  pooled rate deltas, paired bootstrap intervals, score rises and falls, and status changes.
+  `lpgcast-bench` alone still runs the benchmark.
+- **`LLMTruncatedError` and `LLMRefusalError`**: a reply cut off at the output limit or refused
+  is raised as such, not re-asked; `UsageTracker` counts both.
+- **`EpisodeResult.repair_failure`**: why a repair request failed.
+
+### Changed
+
+- A repair that returns the same findings is not repeated.
+
+### Fixed
+
+- A provider fault (rate limit, server error, a second timeout, context length) fails only its
+  episode, quarantined as `provider_error`, `truncated` or `refused`; the run goes on.
+- A fault during a repair keeps the best earlier reply instead of failing the episode.
+- `quarantine.jsonl` is written in episode order, so a replay reproduces it byte for byte.
+
 ## [0.1.1] - 2026-10-11
 
 ### Added

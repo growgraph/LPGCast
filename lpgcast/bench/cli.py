@@ -1,4 +1,4 @@
-"""``lpgcast-bench``: cast the corpus and score it."""
+"""``lpgcast-bench``: cast the corpus and score it, or compare two runs."""
 
 from __future__ import annotations
 
@@ -8,6 +8,8 @@ from pathlib import Path
 
 import click
 
+from lpgcast.bench.compare import CompareError, compare, load_report
+from lpgcast.bench.compare import to_markdown as compare_markdown
 from lpgcast.bench.corpus import CORPUS_VERSION, BenchCase, load_corpus
 from lpgcast.bench.report import to_markdown, write_report
 from lpgcast.bench.run import Row, load_prices, new_report, run_row
@@ -31,7 +33,26 @@ def select_cases(
     return selected
 
 
-@click.command()
+class _RunByDefault(click.Group):
+    """A group that runs ``run`` when the first argument names no subcommand."""
+
+    def parse_args(self, ctx: click.Context, args: list[str]) -> list[str]:
+        if not args or (
+            args[0] not in self.commands and args[0] not in ("--help", "-h")
+        ):
+            args = ["run", *args]
+        return super().parse_args(ctx, args)
+
+
+@click.group(cls=_RunByDefault)
+def main() -> None:
+    """Benchmark text-to-graph casting against the bundled corpus.
+
+    Without a subcommand, `run` is meant: `lpgcast-bench --model NAME`.
+    """
+
+
+@main.command()
 @click.option(
     "--model",
     "models",
@@ -71,7 +92,7 @@ def select_cases(
     help="Where the JSON and Markdown reports go.",
 )
 @click.option("--concurrency", type=int, default=8, show_default=True)
-def main(
+def run(
     models: tuple[str, ...],
     oracle: bool,
     split: str,
@@ -81,7 +102,7 @@ def main(
     out_dir: Path,
     concurrency: int,
 ) -> None:
-    """Benchmark text-to-graph casting against the bundled corpus."""
+    """Cast and score the corpus; write JSON and Markdown reports."""
     settings = LPGCastSettings()
     if replay:
         settings.cache = settings.cache.model_copy(update={"require_hit": True})
@@ -127,3 +148,40 @@ def main(
         report, out_dir, started.strftime("%Y%m%dT%H%M%SZ")
     )
     click.echo(f"Wrote {json_path} and {md_path}", err=True)
+
+
+@main.command("compare")
+@click.argument(
+    "report_a", type=click.Path(exists=True, dir_okay=False, path_type=Path)
+)
+@click.argument(
+    "report_b", type=click.Path(exists=True, dir_okay=False, path_type=Path)
+)
+@click.option(
+    "--row-a", help="Row of REPORT_A; default: its only row, or its only model row."
+)
+@click.option("--row-b", help="Row of REPORT_B; default as for --row-a.")
+@click.option(
+    "--json",
+    "json_path",
+    type=click.Path(dir_okay=False, path_type=Path),
+    help="Also write the comparison as JSON here.",
+)
+def compare_command(
+    report_a: Path,
+    report_b: Path,
+    row_a: str | None,
+    row_b: str | None,
+    json_path: Path | None,
+) -> None:
+    """Read REPORT_B against REPORT_A, episode by episode, on the same corpus."""
+    try:
+        result = compare(
+            load_report(report_a), load_report(report_b), row_a=row_a, row_b=row_b
+        )
+    except CompareError as error:
+        raise click.ClickException(str(error)) from error
+    click.echo(compare_markdown(result), nl=False)
+    if json_path is not None:
+        json_path.parent.mkdir(parents=True, exist_ok=True)
+        json_path.write_text(result.model_dump_json(indent=2) + "\n", encoding="utf-8")

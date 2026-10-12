@@ -75,7 +75,7 @@ uv add lpgcast
 </div>
 
 !!! note "Early development"
-    LPGCast is not released yet. Until it is on PyPI, install it from a clone; see
+    LPGCast is on PyPI (`pip install lpgcast`) and its API may still change; see
     [Installation](getting_started/installation.md).
 
 ## What it does

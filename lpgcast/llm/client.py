@@ -69,6 +69,22 @@ class LLMRequestTimeoutError(RuntimeError):
     """A request exceeded ``request_timeout_seconds``."""
 
 
+class LLMReplyError(RuntimeError):
+    """A reply that arrived but cannot be used, and would not improve if re-asked."""
+
+    def __init__(self, message: str, content: str) -> None:
+        super().__init__(message)
+        self.content = content
+
+
+class LLMTruncatedError(LLMReplyError):
+    """The reply stopped at the output token limit (``finish_reason == "length"``)."""
+
+
+class LLMRefusalError(LLMReplyError):
+    """The model refused, or the provider filtered the reply."""
+
+
 class LLMConfigurationError(RuntimeError):
     """The deployment, not the request, is at fault: no key, no model, a bad key,
     an unknown model, or a parameter the model refuses. Every other request
@@ -150,6 +166,20 @@ def _is_configuration_fault(error: BaseException) -> bool:
     return _mentions(error, _CONFIG_MESSAGE_MARKERS) and not _mentions(
         error, _UNIT_FAULT_MARKERS
     )
+
+
+def _unusable(entry: CachedResponse, model: str) -> LLMReplyError | None:
+    """Why *entry* cannot be used as it stands, or None."""
+    if entry.refusal or entry.finish_reason == "content_filter":
+        reason = entry.refusal or "the provider filtered the reply"
+        return LLMRefusalError(f"{model} refused: {reason}", entry.content)
+    if entry.finish_reason == "length":
+        return LLMTruncatedError(
+            f"{model} stopped at the output token limit after "
+            f"{len(entry.content)} characters",
+            entry.content,
+        )
+    return None
 
 
 def _reask_message(error: LLMJsonParseError, content: str) -> ChatMessage:
@@ -334,6 +364,7 @@ class LLMClient:
 
             choice = response.choices[0] if response.choices else None
             content = (choice.message.content or "") if choice is not None else ""
+            refusal = choice.message.refusal if choice is not None else None
             usage = (
                 token_usage_from_openai(response.usage)
                 if response.usage is not None
@@ -353,6 +384,7 @@ class LLMClient:
                 mode=mode,
                 model=response.model,
                 finish_reason=choice.finish_reason if choice is not None else None,
+                refusal=refusal or None,
                 usage=None if usage.is_empty() else usage,
             )
 
@@ -396,13 +428,16 @@ class LLMClient:
         The reply is parsed, not validated: conformance to the schema is the
         caller's check. A reply that is not a JSON object is re-asked up to
         ``parse_retries`` times with the error shown, and given up on early
-        when the same syntax error repeats. A timeout is re-issued once.
+        when the same syntax error repeats. A timeout is re-issued once. A truncated
+        or refused reply is not re-asked.
 
         Raises:
             LLMJsonParseError: no attempt produced a JSON object.
             LLMConfigurationError: no key or model, or the endpoint refuses the
                 configuration.
             LLMRequestTimeoutError: a request timed out twice.
+            LLMTruncatedError: the reply stopped at the output token limit.
+            LLMRefusalError: the model refused or the provider filtered the reply.
             CacheMissError: a miss while the cache requires hits.
             openai.APIError: any other provider failure, after SDK retries.
         """
@@ -428,6 +463,15 @@ class LLMClient:
                 )
             if entry.usage is not None:
                 total = total + entry.usage
+            # Re-asking would hit the same limit or the same refusal.
+            unusable = _unusable(entry, self.settings.model)
+            if unusable is not None:
+                self._count(
+                    "truncated"
+                    if isinstance(unusable, LLMTruncatedError)
+                    else "refused"
+                )
+                raise unusable
 
             try:
                 data, fixes = parse_json_object(entry.content)

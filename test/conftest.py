@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import re
@@ -58,7 +59,14 @@ def isolated_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("lpgcast.llm.client.RETRY_BACKOFF_BASE_SECONDS", 0.0)
 
 
-def completion(content: str, *, model: str = "fake-model", **usage: Any) -> dict:
+def completion(
+    content: str,
+    *,
+    model: str = "fake-model",
+    finish_reason: str = "stop",
+    refusal: str | None = None,
+    **usage: Any,
+) -> dict:
     """An OpenAI chat-completion body carrying *content*."""
     return {
         "id": "chatcmpl-test",
@@ -68,8 +76,12 @@ def completion(content: str, *, model: str = "fake-model", **usage: Any) -> dict
         "choices": [
             {
                 "index": 0,
-                "finish_reason": "stop",
-                "message": {"role": "assistant", "content": content},
+                "finish_reason": finish_reason,
+                "message": {
+                    "role": "assistant",
+                    "content": content,
+                    "refusal": refusal,
+                },
             }
         ],
         "usage": {
@@ -105,14 +117,20 @@ class FakeEndpoint:
     ``httpx.Response`` as is, and an exception is raised by the transport.
     Replies are a list consumed in order, or a mapping from episode source id
     to such a list, so concurrent episodes each get their own script.
+    *delays* holds back an episode's replies, to force an order of completion.
     """
 
-    def __init__(self, replies: list[Reply] | dict[str, list[Reply]]) -> None:
+    def __init__(
+        self,
+        replies: list[Reply] | dict[str, list[Reply]],
+        delays: dict[str, float] | None = None,
+    ) -> None:
         self.routes: dict[str, list[Reply]] = (
             {key: list(value) for key, value in replies.items()}
             if isinstance(replies, dict)
             else {"": list(replies)}
         )
+        self.delays = delays or {}
         self.requests: list[dict[str, Any]] = []
         self.http_client = httpx.AsyncClient(
             transport=httpx.MockTransport(self._handle)
@@ -131,10 +149,13 @@ class FakeEndpoint:
                 return found.group(1)
         return ""
 
-    def _handle(self, request: httpx.Request) -> httpx.Response:
+    async def _handle(self, request: httpx.Request) -> httpx.Response:
         body = json.loads(request.content)
         self.requests.append(body)
-        script = self.routes.get(self._route(body))
+        route = self._route(body)
+        if route in self.delays:
+            await asyncio.sleep(self.delays[route])
+        script = self.routes.get(route)
         if not script:
             return error(500, "no scripted reply left")
         reply = script.pop(0)
@@ -165,11 +186,12 @@ def make_client(
     def _build(
         *replies: Reply,
         routes: dict[str, list[Reply]] | None = None,
+        delays: dict[str, float] | None = None,
         settings: LLMSettings | None = None,
         cache: CacheSettings | None = None,
         **overrides: Any,
     ) -> tuple[LLMClient, FakeEndpoint]:
-        endpoint = FakeEndpoint(routes if routes is not None else list(replies))
+        endpoint = FakeEndpoint(routes if routes is not None else list(replies), delays)
         base = settings or llm_settings
         if overrides:
             base = base.model_copy(update=overrides)

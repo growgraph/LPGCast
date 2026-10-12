@@ -7,14 +7,16 @@ import asyncio
 import httpx
 import openai
 import pytest
-from conftest import MESSAGES, SCHEMA, error
+from conftest import MESSAGES, SCHEMA, completion, error
 
 from lpgcast.config import CacheSettings
 from lpgcast.llm import (
     CacheMissError,
     LLMConfigurationError,
     LLMJsonParseError,
+    LLMRefusalError,
     LLMRequestTimeoutError,
+    LLMTruncatedError,
     track_usage,
 )
 from lpgcast.llm.client import SCHEMA_INSTRUCTION
@@ -180,6 +182,46 @@ async def test_rate_limit_propagates_and_is_counted(make_client):
     with pytest.raises(openai.RateLimitError):
         await client.acomplete_json(MESSAGES, SCHEMA)
     assert client.usage.rate_limited == 1
+
+
+async def test_a_truncated_reply_is_not_reasked(make_client):
+    cut = httpx.Response(
+        200, json=completion('{"answer": "pre', finish_reason="length")
+    )
+    client, endpoint = make_client(cut, {"answer": "never asked"})
+    with pytest.raises(LLMTruncatedError) as raised:
+        await client.acomplete_json(MESSAGES, SCHEMA)
+    assert raised.value.content == '{"answer": "pre'
+    assert len(endpoint.requests) == 1
+    assert client.usage.truncated == 1
+    assert client.usage.parse_retries == 0
+
+
+async def test_a_cached_truncated_reply_replays_the_same_error(make_client):
+    cut = httpx.Response(
+        200, json=completion('{"answer": "pre', finish_reason="length")
+    )
+    client, endpoint = make_client(cut)
+    for _ in range(2):
+        with pytest.raises(LLMTruncatedError):
+            await client.acomplete_json(MESSAGES, SCHEMA)
+    assert len(endpoint.requests) == 1
+    assert client.usage.cache_hits == 1
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        completion("", refusal="I can't help with that."),
+        completion('{"answer": ""}', finish_reason="content_filter"),
+    ],
+)
+async def test_a_refusal_is_typed_and_not_reasked(make_client, body):
+    client, endpoint = make_client(httpx.Response(200, json=body), {"answer": "x"})
+    with pytest.raises(LLMRefusalError):
+        await client.acomplete_json(MESSAGES, SCHEMA)
+    assert len(endpoint.requests) == 1
+    assert client.usage.refused == 1
 
 
 async def test_bad_json_is_reasked_with_the_error(make_client):

@@ -6,7 +6,10 @@ from lpgcast.llm.client import (
     JsonCompletion,
     LLMClient,
     LLMConfigurationError,
+    LLMRefusalError,
+    LLMReplyError,
     LLMRequestTimeoutError,
+    LLMTruncatedError,
 )
 from lpgcast.llm.jsonparse import LLMJsonParseError, parse_json_object
 from lpgcast.llm.usage import TokenUsage, UsageTracker, track_usage
@@ -20,7 +23,10 @@ __all__ = [
     "LLMClient",
     "LLMConfigurationError",
     "LLMJsonParseError",
+    "LLMRefusalError",
+    "LLMReplyError",
     "LLMRequestTimeoutError",
+    "LLMTruncatedError",
     "TokenUsage",
     "UsageTracker",
     "cache_key",

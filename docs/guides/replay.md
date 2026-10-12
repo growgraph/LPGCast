@@ -18,7 +18,8 @@ quarantine, pending edges and episode results are byte-identical to the first
 run; only `manifest.json` differs, since it reports usage.
 
 A miss means the request changed: the prompt, the schema slice or a model
-setting.
+setting. An episode quarantined as `provider_error` has no cached reply, so its
+replay misses too; cast it again without `--replay` to fill the cache.
 
 ## Settings
 

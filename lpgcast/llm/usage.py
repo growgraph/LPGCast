@@ -93,6 +93,10 @@ class UsageTracker(BaseModel):
     rejected: int = Field(
         default=0, description="Subset of calls_failed: configuration faults."
     )
+    truncated: int = Field(
+        default=0, description="Replies cut off at the output token limit."
+    )
+    refused: int = Field(default=0, description="Replies the model refused.")
     parse_retries: int = Field(default=0, description="Re-asks after bad JSON.")
     parse_abandoned: int = Field(default=0, description="Requests given up on.")
     json_repairs: int = Field(default=0, description="Bracket-kind repairs.")

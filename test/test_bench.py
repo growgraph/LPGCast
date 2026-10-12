@@ -215,14 +215,16 @@ async def test_a_value_the_field_refuses_loses_the_property(make_client):
     for prop in reply["vertices"][0]["props"]:
         if prop["name"] == "commissioned":
             prop["value"] = "4 March 2024"
-    client, _ = make_client(reply, reply, reply)
+    client, endpoint = make_client(reply, reply, reply)
     outcome, episode = await _cast_one(case, source_id, client)
     counts = score_episode(
         outcome, case.expected[source_id], case.schema_, episode.text
     )
     assert counts.props_expected == 3
     assert counts.props_matched == 2
-    assert counts.repairs == 2
+    # The repair returned the same findings, so no second repair is asked for.
+    assert counts.repairs == 1
+    assert len(endpoint.requests) == 2
 
 
 async def test_a_re_cast_that_renames_a_ref_duplicates_an_assigned_vertex(make_client):
