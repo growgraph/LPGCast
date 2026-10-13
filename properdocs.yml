@@ -82,10 +82,12 @@ nav:
     -   How a cast works: concepts/index.md
     -   Identities and mentions: concepts/identities.md
     -   Groundings and quarantine: concepts/groundings.md
+    -   Context: concepts/context.md
 -   Guides:
     -   Preparing a schema: guides/schema.md
     -   Replay and the cache: guides/replay.md
     -   Writing to a database: guides/database.md
+    -   Running as a service: guides/serve.md
     -   The benchmark: guides/benchmark.md
 -   Reference:
     -   Overview: reference/index.md

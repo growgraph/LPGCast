@@ -21,6 +21,10 @@ dev:
 -   recast/lab
 -   injection/plant
 -   injection/lab
+-   context/plant
+-   context/logistics
+-   selection/logistics
+-   selection/plant
 test:
 -   distractors/logistics
 -   distractors/lab
@@ -36,3 +40,7 @@ test:
 -   recast/logistics
 -   injection/helpdesk
 -   injection/logistics
+-   context/helpdesk
+-   context/lab
+-   selection/helpdesk
+-   selection/lab

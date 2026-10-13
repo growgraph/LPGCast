@@ -1,7 +1,9 @@
 """Paired comparison of two benchmark reports, episode by episode.
 
 Episodes pair on case name and source id; only paired episodes enter the pooled
-figures. Each headline rate is read off the pooled counts of either run, and
+figures. Runs on different corpus versions pair only the cases whose content
+digest is the same in both; a report written before cases carried digests
+pairs by case name only when the caller says the cases are unchanged. Each headline rate is read off the pooled counts of either run, and
 its difference gets a paired bootstrap interval: episodes are resampled with
 their pair, so the interval reflects how much the difference depends on which
 episodes the corpus happens to hold. The resampling is seeded, so a comparison
@@ -28,6 +30,7 @@ HEADLINE: tuple[str, ...] = (
     "relation_hallucination",
     "property_hallucination",
     "ungrounded",
+    "unfaithful_value",
     "entity_f1",
     "edge_f1",
     "property_f1",
@@ -78,6 +81,14 @@ class CompareReport(BaseModel):
 
     corpus_version: str
     corpus_digest: str
+    corpus_version_b: str
+    changed_cases: list[str] = Field(
+        description="Cases in both runs whose content differs; left out."
+    )
+    paired_by_name: bool = Field(
+        default=False,
+        description="Corpora differ and cases were paired by name on the caller's word.",
+    )
     row_a: str
     row_b: str
     split_a: str
@@ -123,12 +134,32 @@ def pick_row(report: BenchReport, label: str | None) -> Row:
     raise CompareError(f"more than one row, name one: {', '.join(labels)}")
 
 
-def _episodes(row: Row) -> dict[tuple[str, str], tuple[str, Counts]]:
+def _episodes(
+    row: Row, cases: set[str] | None = None
+) -> dict[tuple[str, str], tuple[str, Counts]]:
     return {
         (case.name, episode.source_id): (episode.status, episode.counts)
         for case in row.cases
+        if cases is None or case.name in cases
         for episode in case.episodes
     }
+
+
+def _comparable_cases(
+    first: Row, second: Row, by_name: bool
+) -> tuple[set[str], list[str]]:
+    """Cases whose content digest matches in both rows, and those that differ.
+    With *by_name*, a case without a digest on either side counts as unchanged."""
+    left = {case.name: case.digest for case in first.cases}
+    right = {case.name: case.digest for case in second.cases}
+    same = {
+        name
+        for name in left.keys() & right.keys()
+        if (left[name] is not None and left[name] == right[name])
+        or (by_name and (left[name] is None or right[name] is None))
+    }
+    changed = sorted((left.keys() & right.keys()) - same)
+    return same, changed
 
 
 def _sum(vectors: list[tuple[int, ...]], picks: list[int]) -> Counts:
@@ -159,20 +190,26 @@ def compare(
     row_a: str | None = None,
     row_b: str | None = None,
     resamples: int = RESAMPLES,
+    pair_by_name: bool = False,
 ) -> CompareReport:
     """Read *b* against *a*, episode by episode.
 
     Raises:
-        CompareError: the reports ran against different corpora, a row is
-            ambiguous or missing, or no episode pairs.
+        CompareError: the reports ran against different corpora with no case
+            in common, a row is ambiguous or missing, or no episode pairs.
     """
-    if a.corpus_digest != b.corpus_digest:
-        raise CompareError(
-            f"different corpora: {a.corpus_digest[:12]}… ({a.corpus_version}) and "
-            f"{b.corpus_digest[:12]}… ({b.corpus_version})"
-        )
     first, second = pick_row(a, row_a), pick_row(b, row_b)
-    left, right = _episodes(first), _episodes(second)
+    cases: set[str] | None = None
+    changed: list[str] = []
+    if a.corpus_digest != b.corpus_digest:
+        cases, changed = _comparable_cases(first, second, pair_by_name)
+        if not cases:
+            raise CompareError(
+                f"different corpora with no unchanged case in common: "
+                f"{a.corpus_digest[:12]}… ({a.corpus_version}) and "
+                f"{b.corpus_digest[:12]}… ({b.corpus_version})"
+            )
+    left, right = _episodes(first, cases), _episodes(second, cases)
     keys = sorted(left.keys() & right.keys())
     if not keys:
         raise CompareError("no episode is in both reports")
@@ -228,6 +265,9 @@ def compare(
     return CompareReport(
         corpus_version=a.corpus_version,
         corpus_digest=a.corpus_digest,
+        corpus_version_b=b.corpus_version,
+        changed_cases=changed,
+        paired_by_name=pair_by_name and a.corpus_digest != b.corpus_digest,
         row_a=first.label,
         row_b=second.label,
         split_a=a.split,
@@ -272,13 +312,20 @@ def to_markdown(report: CompareReport) -> str:
         if report.split_a == report.split_b
         else f"{report.split_a} / {report.split_b}"
     )
+    corpus = (
+        f"Corpus **{report.corpus_version}** · digest `{report.corpus_digest[:12]}…`"
+        if report.corpus_version == report.corpus_version_b and not report.changed_cases
+        else f"Corpora **{report.corpus_version}** / **{report.corpus_version_b}**, "
+        + (
+            "cases paired by name (asserted unchanged)"
+            if report.paired_by_name
+            else "unchanged cases only"
+        )
+    )
     lines = [
         f"# {report.row_b} against {report.row_a}",
         "",
-        (
-            f"Corpus **{report.corpus_version}** · digest `{report.corpus_digest[:12]}…` · "
-            f"split **{split}** · {report.paired} paired episode(s)"
-        ),
+        f"{corpus} · split **{split}** · {report.paired} paired episode(s)",
         "",
         (
             f"Rates are pooled over the paired episodes; Δ is B − A, with a 95% paired "
@@ -330,6 +377,9 @@ def to_markdown(report: CompareReport) -> str:
     if report.rises:
         lines += ["", "### Largest rises", ""]
         lines += _table(header, _episode_rows(report.rises))
+    if report.changed_cases:
+        lines += ["", "## Changed cases", ""]
+        lines.append(f"Left out, content differs: {', '.join(report.changed_cases)}")
     if report.only_a or report.only_b:
         lines += ["", "## Unpaired", ""]
         if report.only_a:

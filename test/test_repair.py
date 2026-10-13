@@ -55,3 +55,29 @@ def test_messages_carry_the_request_the_reply_and_the_corrections():
     assert messages[2] == {"role": "assistant", "content": '{"vertices": []}'}
     assert messages[3]["role"] == "user"
     assert messages[3]["content"].startswith("# CORRECTIONS")
+
+
+def test_a_unit_mismatch_adds_unit_guidance():
+    prompt = repair_prompt(
+        [
+            _finding(
+                "coercion",
+                "vertices[0].props[0]",
+                scope="property",
+                detail="unit_mismatch",
+            )
+        ]
+    )
+    assert "never convert" in prompt
+    plain = repair_prompt(
+        [_finding("coercion", "vertices[0].props[0]", scope="property", detail="type")]
+    )
+    assert "never convert" not in plain
+
+
+def test_an_unfaithful_value_is_listed_with_its_guidance():
+    prompt = repair_prompt(
+        [_finding("value_not_in_quote", "vertices[0].props[0]", scope="property")]
+    )
+    assert "## value_not_in_quote" in prompt
+    assert "the one its `quote` states" in prompt

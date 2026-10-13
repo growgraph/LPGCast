@@ -28,15 +28,31 @@ GUIDANCE: dict[FindingKind, str] = {
     "undeclared_property": "Use only the properties listed for that type.",
     "duplicate_property": "Give each property at most once per vertex or edge.",
     "coercion": (
-        "Write each value so it fits the property's type: a number for INT and FLOAT "
-        "(with the unit shown in [brackets], if any), true or false for BOOL, an ISO "
-        "8601 date for DATETIME. Leave the property out if the text does not state it."
+        "Write each value so it fits the property's type: a plain number for INT and "
+        "FLOAT (1250, not 1,250), true or false for BOOL, an ISO 8601 date for "
+        "DATETIME (2024-03-04, or 2024-03 or 2024 when the text gives no more). Leave "
+        "the property out if the text does not state it."
+    ),
+    "value_not_in_quote": (
+        "The value must be the one its `quote` states: the same digits, and the same "
+        "day, month and year for a date. Correct the value or the quote; if the text "
+        "does not state the value, leave the property out."
     ),
     "quote_not_found": (
         "Every `quote` must be copied character for character from the TEXT. Do not "
-        "paraphrase, shorten with ellipses or quote CONTEXT."
+        "paraphrase, shorten with ellipses or quote CONTEXT, except for a key of an "
+        "entity the TEXT refers to."
     ),
     "endpoint_invalid": "",
+}
+
+#: Added to a kind's guidance when one of its findings has this detail.
+DETAIL_GUIDANCE: dict[tuple[FindingKind, str], str] = {
+    ("coercion", "unit_mismatch"): (
+        "A property shown with a unit in [brackets] takes its value in exactly that "
+        "unit, and the symbol is case-sensitive (mW is not MW). If the text states the "
+        "value in another unit, leave the property out; never convert it."
+    ),
 }
 
 INTRO = (
@@ -59,6 +75,12 @@ def repair_prompt(findings: list[Finding]) -> str:
         if not group or not GUIDANCE[kind]:
             continue
         lines = [f"## {kind}", "", GUIDANCE[kind], ""]
+        details = sorted({f.detail for f in group if f.detail is not None})
+        extra = [
+            DETAIL_GUIDANCE[(kind, d)] for d in details if (kind, d) in DETAIL_GUIDANCE
+        ]
+        if extra:
+            lines[-1:-1] = ["", *extra]
         for finding in group:
             fragment = json.dumps(
                 finding.fragment, ensure_ascii=False, separators=(",", ":")

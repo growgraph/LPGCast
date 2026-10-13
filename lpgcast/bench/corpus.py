@@ -35,10 +35,10 @@ SPLITS_FILE = CASES_DIR / "SPLITS.yaml"
 
 #: Bump whenever a case, schema or split assignment changes. Results from
 #: different versions are not comparable.
-CORPUS_VERSION = "1.0.0"
+CORPUS_VERSION = "1.1.0"
 
 #: Content hash of ``cases/`` and ``schemas/`` at :data:`CORPUS_VERSION`.
-CORPUS_DIGEST = "4f9e43f076b574ff325b92b13bb4a30822683232161a83f5a80b6388d4331943"
+CORPUS_DIGEST = "4703509c976f20c4338b4ab7411caca77b1b6899cffb994236f4e40819f12c01"
 
 Split = Literal["dev", "test"]
 
@@ -54,6 +54,11 @@ class ExpectedProp(BaseModel):
 
     value: Any
     quote: str | None = None
+    context: str | None = Field(
+        default=None,
+        description="Source id of the context item the quote is in; only an "
+        "identity value may be read from context.",
+    )
 
     @property
     def evidence(self) -> str:
@@ -166,6 +171,10 @@ class BenchCase(BaseModel):
     settings: CaseSettings
     episodes: list[Episode]
     expected: dict[str, ExpectedEpisode]
+    digest: str = Field(
+        description="SHA-256 of the case's files, its split and its schemas: "
+        "two runs compare on a case only when this matches."
+    )
 
 
 def _read_yaml(path: Path) -> Any:
@@ -236,6 +245,16 @@ def load_case(
         raise ValueError(
             f"{name}: episodes {sorted(ids)} and expected {sorted(expected)} differ"
         )
+    parts = [meta.schema_] if isinstance(meta.schema_, str) else meta.schema_
+    digest = hashlib.sha256(f"{name}\0{assignment[name]}".encode())
+    for path in [
+        directory / "case.yaml",
+        directory / "episodes.jsonl",
+        directory / "expected.yaml",
+        *(schemas_dir / f"{part}.yaml" for part in parts),
+    ]:
+        digest.update(path.name.encode("utf-8"))
+        digest.update(path.read_bytes())
     return BenchCase(
         name=name,
         family=family,
@@ -247,6 +266,7 @@ def load_case(
         settings=meta.settings,
         episodes=episodes,
         expected=expected,
+        digest=digest.hexdigest(),
     )
 
 

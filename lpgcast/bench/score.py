@@ -31,7 +31,7 @@ from lpgcast.resolve import Resolution
 from lpgcast.validate import CONSEQUENTIAL, Validation
 
 #: Findings that are about grounding or follow from another, not about the schema.
-NOT_CONFORMANCE = frozenset({"quote_not_found"}) | CONSEQUENTIAL
+NOT_CONFORMANCE = frozenset({"quote_not_found", "value_not_in_quote"}) | CONSEQUENTIAL
 
 
 class Counts(BaseModel):
@@ -53,6 +53,7 @@ class Counts(BaseModel):
     undeclared_edge_first: int = 0
     properties_first: int = 0
     undeclared_property_first: int = 0
+    unfaithful_value_first: int = 0
     direction_fixed: int = 0
     # Against the expected graph.
     entities_expected: int = 0
@@ -127,7 +128,7 @@ def _hashable(value: Any) -> Any:
 
 
 def _overlap(a: Span, b: Span) -> bool:
-    return a.start < b.end and b.start < a.end
+    return a.context == b.context and a.start < b.end and b.start < a.end
 
 
 def identity_keys(vertex: Vertex, props: dict[str, Any]) -> list[tuple[Any, ...]]:
@@ -184,16 +185,31 @@ def _coerce_props(
     return out
 
 
-def _prop_spans(props: dict[str, ExpectedProp], text: str) -> dict[str, Span]:
+def _prop_spans(
+    props: dict[str, ExpectedProp], text: str, context: dict[str, str] | None = None
+) -> dict[str, Span]:
     spans: dict[str, Span] = {}
     for name, prop in props.items():
-        span = locate(prop.evidence, text)
+        if prop.context is None:
+            span = locate(prop.evidence, text)
+        else:
+            found = locate(prop.evidence, (context or {}).get(prop.context, ""))
+            span = (
+                None
+                if found is None
+                else found.model_copy(update={"context": prop.context})
+            )
         if span is not None:
             spans[name] = span
     return spans
 
 
-def gold_vertices(graph: ExpectedGraph, schema: Schema, text: str) -> dict[str, _Gold]:
+def gold_vertices(
+    graph: ExpectedGraph,
+    schema: Schema,
+    text: str,
+    context: dict[str, str] | None = None,
+) -> dict[str, _Gold]:
     """Expected vertices with coerced properties, identity keys and spans.
 
     Raises:
@@ -214,7 +230,7 @@ def gold_vertices(graph: ExpectedGraph, schema: Schema, text: str) -> dict[str, 
             keys=identity_keys(vertex, props),
             props=props,
             span=locate(item.quote, text),
-            prop_spans=_prop_spans(item.props, text),
+            prop_spans=_prop_spans(item.props, text, context),
         )
     return out
 
@@ -343,6 +359,7 @@ def _reply(counts: Counts, validation: Validation, first: bool) -> None:
     counts.undeclared_edge_first += kinds.count("undeclared_edge")
     counts.properties_first += properties
     counts.undeclared_property_first += kinds.count("undeclared_property")
+    counts.unfaithful_value_first += kinds.count("value_not_in_quote")
 
 
 def _selection(
@@ -386,8 +403,9 @@ def score_episode(
     schema: Schema,
     text: str,
     usage: UsageTracker | None = None,
+    context: dict[str, str] | None = None,
 ) -> Counts:
-    """Counts for one cast episode."""
+    """Counts for one cast episode; *context* maps context source ids to text."""
     counts = Counts(episodes=1)
     result = outcome.result
     counts.failed += result.status == "failed"
@@ -403,8 +421,8 @@ def score_episode(
         counts.billed_input_tokens = usage.billed.input_tokens or 0
         counts.billed_output_tokens = usage.billed.output_tokens or 0
 
-    gold = gold_vertices(expected, schema, text)
-    banned = gold_vertices(expected.forbidden, schema, text)
+    gold = gold_vertices(expected, schema, text, context)
+    banned = gold_vertices(expected.forbidden, schema, text, context)
     counts.entities_expected = len(gold)
     counts.edges_expected = len(expected.edges)
     counts.forbidden_expected = len(banned) + len(expected.forbidden.edges)
@@ -480,7 +498,11 @@ def score_episode(
             counts.spans_checked += 1
             counts.spans_hit += any(_overlap(s, span) for s in spans)
         _score_props(
-            counts, gold_props, props, _prop_spans(edge.props, text), prop_spans
+            counts,
+            gold_props,
+            props,
+            _prop_spans(edge.props, text, context),
+            prop_spans,
         )
     counts.forbidden_written += sum(
         (edge.relation, edge.from_, edge.to) in by_handles

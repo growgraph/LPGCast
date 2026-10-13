@@ -41,7 +41,9 @@ Every property should have a `type`. Values are coerced to it before writing:
 
 A numeric field with `semantics.unit` (`unit: kW`) accepts a value written with
 that unit and strips it. A value in any other unit is refused rather than
-converted. The sheet shows the unit, so the model knows what to expect.
+converted, and units are case-sensitive (`mW` is not `MW`). The sheet shows the
+unit, so the model knows what to expect. The model writes numbers plain
+(`1250`) and dates as ISO 8601; the quote keeps the text's own form.
 
 ## Large schemas
 

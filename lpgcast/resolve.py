@@ -25,6 +25,7 @@ from typing import Any
 
 from graflo.architecture.graph_types.container import GraphContainer
 from graflo.architecture.graph_types.identifiers import EdgeId
+from graflo.architecture.graph_types.pending import EdgeEndpoint, PendingEdge
 from graflo.architecture.schema.document import Schema
 from graflo.architecture.schema.identity_digest import compute_vertex_identity
 from graflo.architecture.schema.vertex import Vertex
@@ -50,25 +51,8 @@ def mint_id(schema: Schema, source_id: str, vertex_type: str, ref: str) -> str:
     return str(uuid.uuid5(MINT_NAMESPACE, name))
 
 
-class Endpoint(BaseModel):
-    """How an edge reaches one vertex."""
-
-    vertex: str
-    identity: dict[str, Any] | None = Field(
-        default=None, description="Primary identity, when known."
-    )
-    match: dict[str, Any] | None = Field(
-        default=None, description="Secondary identity values to look the vertex up by."
-    )
-
-
-class PendingEdge(BaseModel):
-    """An edge with an endpoint known only by a secondary identity."""
-
-    edge_id: EdgeId
-    source: Endpoint
-    target: Endpoint
-    props: dict[str, Any]
+#: How an edge reaches one vertex: graflo's ``EdgeEndpoint``.
+Endpoint = EdgeEndpoint
 
 
 class Resolution(BaseModel):
@@ -125,11 +109,15 @@ def _grounding(
     ref: str,
     **target: Any,
 ) -> Grounding:
+    text = episode.text
+    if span.context is not None:
+        text = [i.text for i in episode.context if i.source_id == span.context][-1]
     return Grounding(
         source_id=episode.source_id,
         char_start=span.start,
         char_end=span.end,
-        quote=episode.text[span.start : span.end],
+        in_context=span.context,
+        quote=text[span.start : span.end],
         extractor=extractor,
         model=model,
         schema_ref=ref,

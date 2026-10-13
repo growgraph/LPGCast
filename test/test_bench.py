@@ -25,7 +25,7 @@ from lpgcast.bench.score import gold_vertices, score_episode, score_recast
 from lpgcast.cast import LPGCaster
 from lpgcast.config import CacheSettings, LPGCastSettings
 from lpgcast.ground import locate
-from lpgcast.validate import mention_identity
+from lpgcast.validate import identity_fields, mention_identity
 
 CORPUS = load_corpus()
 BY_NAME = {case.name: case for case in CORPUS}
@@ -41,7 +41,7 @@ def test_the_corpus_digest_is_pinned_to_its_version():
 def test_every_family_has_two_dev_and_two_test_instances():
     families = Counter((case.family, case.split) for case in CORPUS)
     names = {case.family for case in CORPUS}
-    assert len(names) == 7
+    assert len(names) == 9
     for family in names:
         assert families[(family, "dev")] == 2
         assert families[(family, "test")] == 2
@@ -54,12 +54,18 @@ def test_the_expected_graph_is_in_the_text(case: BenchCase):
     for episode in case.episodes:
         expected = case.expected[episode.source_id]
         text = episode.text
+        context = {item.source_id: item.text for item in episode.context}
         for graph in (expected, expected.forbidden):
-            gold_vertices(graph, case.schema_, text)  # types, properties, values
+            gold_vertices(graph, case.schema_, text, context)  # values
             for handle, vertex in graph.vertices.items():
                 assert locate(vertex.quote, text), (episode.source_id, handle)
+                identity = identity_fields(config[vertex.type])
                 for name, prop in vertex.props.items():
-                    assert locate(prop.evidence, text), (
+                    source = text
+                    if prop.context is not None:
+                        assert name in identity, (episode.source_id, handle, name)
+                        source = context[prop.context]
+                    assert locate(prop.evidence, source), (
                         episode.source_id,
                         handle,
                         name,
@@ -76,7 +82,7 @@ def test_the_expected_graph_is_in_the_text(case: BenchCase):
                 for name, prop in edge.props.items():
                     assert locate(prop.evidence, text), (episode.source_id, name)
         for handle, vertex in expected.vertices.items():
-            gold = gold_vertices(expected, case.schema_, text)[handle]
+            gold = gold_vertices(expected, case.schema_, text, context)[handle]
             if vertex.mention:
                 assert mention_identity(config[vertex.type], gold.props), handle
             elif config[vertex.type].identity_mode == "natural":

@@ -5,11 +5,13 @@ requires = ["hatchling"]
 [dependency-groups]
 bench = []
 dev = [
+  "fastapi>=0.134.0,<1",
   "jsonschema>=4.23.0",
   "pre-commit>=4.6.2",
   "pytest-asyncio>=1.2.0",
   "pytest>=9.0.2",
-  "ty>=0.0.86"
+  "ty>=0.0.86",
+  "uvicorn>=0.30.0,<1"
 ]
 docs = [
   "mkdocs-gen-files>=0.5.0",
@@ -36,7 +38,7 @@ classifiers = [
 ]
 dependencies = [
   "click>=8.2.0,<9",
-  "graflo>=1.17.0,<2",
+  "graflo>=1.18.0,<2",
   "openai>=1.109.0,<3",
   "pydantic-settings>=2.12.0",
   "pydantic>=2.12.5",
@@ -51,9 +53,10 @@ requires-python = ">=3.11"
 version = "0.1.1"
 
 [project.optional-dependencies]
-# Reserved: the dense retrieval lane and the HTTP service. Empty in 0.1.
+# Reserved: the dense retrieval lane.
 embed = []
-server = []
+# `lpgcast serve`.
+server = ["fastapi>=0.134.0,<1", "uvicorn[standard]>=0.30.0,<1"]
 
 [project.scripts]
 lpgcast = "lpgcast.cli:main"

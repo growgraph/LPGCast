@@ -65,6 +65,9 @@ from lpgcast.select import (
 from lpgcast.sink import MemoryQuarantineSink, QuarantineRecord, QuarantineSink
 from lpgcast.validate import Finding, Fix, Validation, validate
 
+#: Version of the files a cast writes; bumped when a record's meaning changes.
+OUTPUT_FORMAT_VERSION = 2
+
 #: Repair requests after the first reply, at most.
 MAX_REPAIRS = 2
 
@@ -132,6 +135,7 @@ class RunManifest(BaseModel):
 
     lpgcast_version: str
     graflo_version: str
+    output_format_version: int = OUTPUT_FORMAT_VERSION
     schema_ref: str
     model: dict[str, Any] = Field(
         description="Every model setting that reaches the provider."
@@ -318,7 +322,9 @@ class LPGCaster:
             slice_, episode, user_instruction=self.settings.user_instruction
         )
         shape = instance_json_schema(slice_)
-        current = first = validate(extraction.wire, slice_, episode.text)
+        current = first = validate(
+            extraction.wire, slice_, episode.text, episode.context
+        )
         current_reply = extraction.completion.content
         best, best_reply = current, current_reply
         repairs = 0
@@ -345,7 +351,7 @@ class LPGCaster:
                 requests += 1
                 repair_failure = _fault_kind(error)
                 break
-            current = validate(wire, slice_, episode.text)
+            current = validate(wire, slice_, episode.text, episode.context)
             current_reply = completion.content
             if current.kept >= best.kept:
                 best, best_reply = current, current_reply

@@ -9,6 +9,9 @@
 | ``quarantine.jsonl`` | what was left out, and ``unmapped`` items | yes |
 | ``manifest.json`` | versions, settings, counts and usage | no: usage differs |
 | ``write.json`` | what was sent to the database, when one was given | — |
+
+``manifest.json`` names the ``output_format_version``. Version 2: a grounding
+whose ``in_context`` is set has offsets into that context item's text.
 """
 
 from __future__ import annotations

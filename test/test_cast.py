@@ -345,3 +345,29 @@ async def test_replay_of_an_unseen_episode_stops_the_run(make_caster):
     )
     with pytest.raises(CacheMissError):
         await caster.cast([ANN])
+
+
+async def test_an_identity_from_context_is_grounded_there(make_caster):
+    from lpgcast.episode import ContextItem
+
+    episode = Episode(
+        source_id="m4",
+        text="Note: the press leaks oil.",
+        context=[ContextItem(source_id="m0", text="Press S-7 was serviced.")],
+    )
+    reply = copy.deepcopy(NOTE_REPLY)
+    reply["vertices"][0]["quote"] = "the press leaks oil"
+    reply["vertices"][0]["props"][0].update(
+        value="the press leaks oil", quote="the press leaks oil"
+    )
+    reply["vertices"][1]["quote"] = "the press"
+    reply["edges"][0]["quote"] = "the press leaks oil"
+    reply["unmapped"] = []
+    caster, _, _ = make_caster({"m4": [reply]})
+    result = await caster.cast([episode])
+
+    assert result.episodes[0].status == "ok"
+    serial = next(g for g in result.groundings if g.property == "serial")
+    assert (serial.in_context, serial.quote) == ("m0", "S-7")
+    assert all(g.in_context is None for g in result.groundings if g is not serial)
+    assert result.manifest.output_format_version == 2

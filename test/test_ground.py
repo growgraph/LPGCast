@@ -37,3 +37,32 @@ def test_offsets_survive_characters_that_fold_to_two():
     span = locate("izmir", text)
     assert span is not None
     assert text[span.start : span.end] == "İzmir"
+
+
+@pytest.mark.parametrize(
+    ("quote", "text", "expected"),
+    [
+        ('"replace seal"', "order “replace seal” opened", "“replace seal”"),
+        ("Ann's press", "Ann’s press", "Ann’s press"),
+        ("S-7", "press S–7 stopped", "S–7"),
+        ("-5 °C", "at −5 °C", "−5 °C"),
+    ],
+)
+def test_typographic_quotes_and_dashes_fold(quote, text, expected):
+    span = locate(quote, text)
+    assert span is not None and text[span.start : span.end] == expected
+
+
+def test_the_occurrence_nearest_the_owner_wins():
+    text = "Press S-7 runs. Later, press S-9 was rated 200 kW; S-7 was not."
+    first = locate("S-7", text)
+    assert first is not None and first.start == text.index("S-7")
+    owner = locate("S-7 was not", text)
+    near = locate("S-7", text, near=owner)
+    assert near is not None and near.start == text.rindex("S-7")
+
+
+def test_a_tie_goes_to_the_first_occurrence():
+    text = "ab x ab"
+    span = locate("ab", text, near=locate("x", text))
+    assert span is not None and span.start == 0

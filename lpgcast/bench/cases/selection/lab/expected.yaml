@@ -1,0 +1,55 @@
+selection-lab-1:
+    vertices:
+        a:
+            type: Sample
+            quote: S-410
+            mention: true
+            props:
+                sample_id: S-410
+        b:
+            type: Sample
+            quote: S-411
+            mention: true
+            props:
+                sample_id: S-411
+        o:
+            type: Sample
+            quote: sample S-400
+            mention: true
+            props:
+                sample_id: S-400
+    edges:
+    -   relation: DERIVED_FROM
+        from: a
+        to: o
+        quote: S-410 and S-411 were derived from sample S-400
+    -   relation: DERIVED_FROM
+        from: b
+        to: o
+        quote: S-411 were derived from sample S-400
+selection-lab-2:
+    vertices:
+        r:
+            type: Run
+            quote: A run
+        i:
+            type: Instrument
+            quote: spectrometer SP-9
+            mention: true
+            props:
+                serial: SP-9
+        s:
+            type: Sample
+            quote: aliquot S-412
+            mention: true
+            props:
+                sample_id: S-412
+    edges:
+    -   relation: USED
+        from: r
+        to: i
+        quote: A run on spectrometer SP-9
+    -   relation: ANALYSED
+        from: r
+        to: s
+        quote: analysed aliquot S-412

@@ -34,6 +34,7 @@ chunking, no encoder and no vector store. An episode longer than
 | `undeclared_property` | a property its type does not declare |
 | `duplicate_property` | a property given twice |
 | `coercion` | a value its field type refuses, or a unit other than the declared one |
+| `value_not_in_quote` | a number written as digits, or a date, that its quote does not state (`37.5` on "3.75 kW", `2024-03-01` on "March 2024"); spelled-out and relative values are not checked |
 | `quote_not_found` | an item whose quote is not in the text |
 | `endpoint_invalid` | an edge whose endpoint was removed; never shown to the model, it goes when the endpoint is fixed |
 

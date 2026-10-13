@@ -69,10 +69,45 @@ def test_the_comparison_is_byte_stable(oracle_report: BenchReport):
     )
 
 
-def test_different_corpora_are_refused(oracle_report: BenchReport):
-    other = oracle_report.model_copy(update={"corpus_digest": "0" * 64})
-    with pytest.raises(CompareError, match="different corpora"):
+def _other_corpus(report: BenchReport, changed: int = 0) -> BenchReport:
+    """*report* as if run on another corpus version, with *changed* cases edited."""
+    other = report.model_copy(deep=True)
+    other.corpus_digest = "0" * 64
+    other.corpus_version = "9.9.9"
+    for case in other.rows[0].cases[:changed]:
+        case.digest = "f" * 64
+    return other
+
+
+def test_another_corpus_pairs_only_unchanged_cases(oracle_report: BenchReport):
+    other = _other_corpus(oracle_report, changed=1)
+    result = compare(oracle_report, other)
+    first = oracle_report.rows[0].cases[0]
+    assert result.changed_cases == [first.name]
+    assert result.paired == compare(oracle_report, oracle_report).paired - len(
+        first.episodes
+    )
+    assert "unchanged cases only" in to_markdown(result)
+
+
+def test_another_corpus_with_no_unchanged_case_is_refused(oracle_report: BenchReport):
+    other = _other_corpus(oracle_report, changed=len(oracle_report.rows[0].cases))
+    with pytest.raises(CompareError, match="no unchanged case"):
         compare(oracle_report, other)
+
+
+def test_reports_without_case_digests_compare_only_on_one_corpus(
+    oracle_report: BenchReport,
+):
+    old = oracle_report.model_copy(deep=True)
+    for case in old.rows[0].cases:
+        case.digest = None
+    with pytest.raises(CompareError, match="no unchanged case"):
+        compare(old, _other_corpus(oracle_report))
+    assert compare(old, old).paired > 0
+    trusted = compare(old, _other_corpus(oracle_report), pair_by_name=True)
+    assert trusted.paired == compare(old, old).paired
+    assert "paired by name" in to_markdown(trusted)
 
 
 def test_unpaired_episodes_are_listed_and_left_out(oracle_report: BenchReport):
@@ -117,9 +152,8 @@ def test_the_command_refuses_different_corpora(
 ):
     a, b = tmp_path / "a.json", tmp_path / "b.json"
     a.write_text(oracle_report.model_dump_json())
-    b.write_text(
-        oracle_report.model_copy(update={"corpus_digest": "0" * 64}).model_dump_json()
-    )
+    other = _other_corpus(oracle_report, len(oracle_report.rows[0].cases))
+    b.write_text(other.model_dump_json())
     result = CliRunner().invoke(bench, ["compare", str(a), str(b)])
     assert result.exit_code != 0
-    assert "different corpora" in result.output
+    assert "no unchanged case" in result.output

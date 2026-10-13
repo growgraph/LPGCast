@@ -236,3 +236,74 @@ def test_findings_are_ordered_by_kind_and_carry_fragments(plant):
     result = _check(plant, reply)
     assert [f.kind for f in result.findings][:2] == ["unknown_type", "quote_not_found"]
     assert result.findings[0].fragment["type"] == "Robot"
+
+
+def test_a_value_its_quote_does_not_state_is_a_finding(plant):
+    text = "Ann (ann@x.com) operates press S-7, rated 3.75 kW, since 2024-03."
+    reply = _mutate(
+        ["vertices", 1, "props", 1],
+        {"name": "power", "value": 37.5, "quote": "3.75 kW"},
+    )
+    result = _check(plant, reply, text)
+    [finding] = result.findings
+    assert (finding.kind, finding.path) == (
+        "value_not_in_quote",
+        "vertices[1].props[1]",
+    )
+    machine = next(v for v in result.vertices if v.type == "Machine")
+    assert "power" not in machine.props
+
+
+def test_a_date_part_its_quote_does_not_state_is_a_finding(plant):
+    reply = _mutate(
+        ["edges", 0, "props", 0],
+        {"name": "since", "value": "2024-03-01", "quote": "2024-03"},
+    )
+    [finding] = _check(plant, reply).findings
+    assert finding.kind == "value_not_in_quote"
+
+
+def test_an_identity_value_grounds_in_context(plant):
+    from lpgcast.episode import ContextItem
+
+    text = "The press is leaking again."
+    context = [ContextItem(source_id="m0", text="Press S-7 was serviced on Monday.")]
+    reply = {
+        "vertices": [
+            {
+                "ref": "v1",
+                "type": "Machine",
+                "quote": "The press",
+                "mention": True,
+                "props": [{"name": "serial", "value": "S-7", "quote": "S-7"}],
+            }
+        ]
+    }
+    result = validate(WireExtraction.model_validate(reply), plant, text, context)
+    assert result.findings == []
+    span = result.vertices[0].prop_spans["serial"]
+    assert span.context == "m0"
+    assert context[0].text[span.start : span.end] == "S-7"
+    assert [f.kind for f in result.fixes] == ["grounded_in_context"]
+
+
+def test_a_non_identity_value_does_not_ground_in_context(plant):
+    from lpgcast.episode import ContextItem
+
+    text = "Press S-7 is leaking again."
+    context = [ContextItem(source_id="m0", text="It is rated 200 kW.")]
+    reply = {
+        "vertices": [
+            {
+                "ref": "v1",
+                "type": "Machine",
+                "quote": "Press S-7",
+                "props": [
+                    {"name": "serial", "value": "S-7", "quote": "S-7"},
+                    {"name": "power", "value": 200, "quote": "200 kW"},
+                ],
+            }
+        ]
+    }
+    result = validate(WireExtraction.model_validate(reply), plant, text, context)
+    assert [f.kind for f in result.findings] == ["quote_not_found"]

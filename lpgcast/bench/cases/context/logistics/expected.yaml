@@ -1,0 +1,42 @@
+context-logistics-1:
+    vertices:
+        s:
+            type: Shipment
+            quote: The consignment
+            mention: true
+            props:
+                tracking:
+                    value: TRK-4410
+                    context: context-logistics-0
+        w:
+            type: Warehouse
+            quote: depot HAM-2
+            mention: true
+            props:
+                code: HAM-2
+    edges:
+    -   relation: SHIPPED_FROM
+        from: s
+        to: w
+        quote: The consignment left depot HAM-2
+context-logistics-2:
+    vertices:
+        d:
+            type: Driver
+            quote: He
+            mention: true
+            props:
+                license:
+                    value: DL-3302
+                    context: context-logistics-0b
+        c:
+            type: Carrier
+            quote: RoadLink
+            mention: true
+            props:
+                name: RoadLink
+    edges:
+    -   relation: DRIVES_FOR
+        from: d
+        to: c
+        quote: drives for RoadLink

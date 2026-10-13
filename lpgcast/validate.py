@@ -7,13 +7,16 @@ wrong for an extraction. Every such case is a finding here.
 Deterministic fixes run first and are recorded: values are coerced to their
 field type (declared units stripped), an edge given in the reverse of its
 declared direction is flipped, and quotes are matched ignoring case and
-whitespace runs. What remains are findings, each naming the item it removes.
+whitespace runs. A property's quote is read nearest its owner's. An identity
+value the text refers to but only the episode's context states is grounded
+there. A number written as digits, or a date, must be what its quote states. What remains are findings, each naming the item it removes.
 An item with a finding is left out; the rest of the reply stands.
 """
 
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from typing import Any, Literal
 
 from graflo.architecture.graph_types.identifiers import EdgeId
@@ -26,7 +29,9 @@ from graflo.architecture.schema.vertex import Field as SchemaField
 from graflo.architecture.schema.vertex import Vertex
 from pydantic import BaseModel, Field
 
+from lpgcast.episode import ContextItem
 from lpgcast.extract import WireExtraction, WireProp
+from lpgcast.fidelity import value_mismatch
 from lpgcast.ground import Span, locate
 
 FindingKind = Literal[
@@ -35,6 +40,7 @@ FindingKind = Literal[
     "undeclared_property",
     "duplicate_property",
     "coercion",
+    "value_not_in_quote",
     "quote_not_found",
     "identity_insufficient",
     "dangling_ref",
@@ -51,6 +57,7 @@ FINDING_ORDER: tuple[FindingKind, ...] = (
     "undeclared_property",
     "duplicate_property",
     "coercion",
+    "value_not_in_quote",
     "quote_not_found",
     "endpoint_invalid",
 )
@@ -83,7 +90,7 @@ class Finding(BaseModel):
 class Fix(BaseModel):
     """A deterministic correction applied without asking the model."""
 
-    kind: Literal["coerced", "edge_reversed", "quote_normalized"]
+    kind: Literal["coerced", "edge_reversed", "quote_normalized", "grounded_in_context"]
     path: str
     message: str
 
@@ -168,11 +175,30 @@ def mention_identity(
     return None
 
 
+def identity_fields(vertex: Vertex) -> frozenset[str]:
+    """Properties that take part in any identity of *vertex*."""
+    names: set[str] = set()
+    if vertex.identity_mode == "natural":
+        names.update(vertex.identity)
+    elif vertex.identity_mode == "hash":
+        names.update(vertex.digest_source_fields)
+    for secondary in vertex.secondary_identities:
+        names.update(secondary.fields)
+    return frozenset(names)
+
+
 class _Checker:
-    def __init__(self, slice_: Schema, text: str) -> None:
+    def __init__(
+        self, slice_: Schema, text: str, context: Sequence[ContextItem] = ()
+    ) -> None:
         self.slice = slice_
         self.text = text
+        self.context = {item.source_id: item.text for item in context}
         self.result = Validation()
+
+    def source(self, span: Span) -> str:
+        text = self.text if span.context is None else self.context[span.context]
+        return text[span.start : span.end]
 
     def find(self, **kwargs: Any) -> None:
         self.result.findings.append(Finding(**kwargs))
@@ -180,8 +206,8 @@ class _Checker:
     def fix(self, kind: Any, path: str, message: str) -> None:
         self.result.fixes.append(Fix(kind=kind, path=path, message=message))
 
-    def span(self, quote: str, path: str) -> Span | None:
-        span = locate(quote, self.text)
+    def span(self, quote: str, path: str, *, near: Span | None = None) -> Span | None:
+        span = locate(quote, self.text, near=near)
         if span is not None and self.text[span.start : span.end] != quote:
             self.fix(
                 "quote_normalized",
@@ -190,6 +216,19 @@ class _Checker:
             )
         return span
 
+    def context_span(self, quote: str, path: str) -> Span | None:
+        """*quote* in the context, latest item first."""
+        for source_id, text in reversed(self.context.items()):
+            span = locate(quote, text)
+            if span is not None:
+                self.fix(
+                    "grounded_in_context",
+                    path,
+                    f"identity value quoted from context {source_id!r}",
+                )
+                return span.model_copy(update={"context": source_id})
+        return None
+
     def props(
         self,
         wire_props: list[WireProp],
@@ -197,6 +236,9 @@ class _Checker:
         owner: str,
         path: str,
         ref: str | None,
+        *,
+        near: Span | None = None,
+        identity: frozenset[str] = frozenset(),
     ) -> tuple[dict[str, Any], dict[str, Span]]:
         values: dict[str, Any] = {}
         spans: dict[str, Span] = {}
@@ -231,13 +273,19 @@ class _Checker:
                     kind="coercion", detail=error.kind, message=str(error), **common
                 )
                 continue
-            span = self.span(prop.quote, prop_path)
+            span = self.span(prop.quote, prop_path, near=near)
+            if span is None and prop.name in identity:
+                span = self.context_span(prop.quote, prop_path)
             if span is None:
                 self.find(
                     kind="quote_not_found",
                     message=f"The quote {prop.quote!r} for {prop.name!r} is not in the text.",
                     **common,
                 )
+                continue
+            mismatch = value_mismatch(value, field, self.source(span))
+            if mismatch is not None:
+                self.find(kind="value_not_in_quote", message=mismatch, **common)
                 continue
             if value != prop.value:
                 self.fix("coerced", prop_path, f"{prop.value!r} -> {value!r}")
@@ -297,8 +345,16 @@ class _Checker:
                 )
                 continue
             fields = {f.name: f for f in extractable_properties(vertex)}
-            props, prop_spans = self.props(wv.props, fields, wv.type, path, wv.ref)
             span = self.span(wv.quote, path)
+            props, prop_spans = self.props(
+                wv.props,
+                fields,
+                wv.type,
+                path,
+                wv.ref,
+                near=span,
+                identity=identity_fields(vertex),
+            )
             if span is None:
                 self.find(
                     kind="quote_not_found",
@@ -373,10 +429,10 @@ class _Checker:
                 )
                 continue
             fields = {f.name: f for f in edge.properties}
-            props, prop_spans = self.props(
-                we.props, fields, f"edge {edge.relation or ''}", path, None
-            )
             span = self.span(we.quote, path)
+            props, prop_spans = self.props(
+                we.props, fields, f"edge {edge.relation or ''}", path, None, near=span
+            )
             if span is None:
                 self.find(
                     kind="quote_not_found",
@@ -404,9 +460,14 @@ class _Checker:
             )
 
 
-def validate(wire: WireExtraction, slice_: Schema, text: str) -> Validation:
-    """Check *wire* against *slice_* and the episode *text*."""
-    checker = _Checker(slice_, text)
+def validate(
+    wire: WireExtraction,
+    slice_: Schema,
+    text: str,
+    context: Sequence[ContextItem] = (),
+) -> Validation:
+    """Check *wire* against *slice_*, the episode *text* and its *context*."""
+    checker = _Checker(slice_, text, context)
     refs = checker.vertices(wire)
     checker.edges(wire, refs)
     checker.unmapped(wire)

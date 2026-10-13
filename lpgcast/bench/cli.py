@@ -162,6 +162,12 @@ def run(
 )
 @click.option("--row-b", help="Row of REPORT_B; default as for --row-a.")
 @click.option(
+    "--pair-by-name",
+    is_flag=True,
+    help="Across corpus versions, pair cases a report has no content digest for "
+    "by name: you assert they did not change.",
+)
+@click.option(
     "--json",
     "json_path",
     type=click.Path(dir_okay=False, path_type=Path),
@@ -172,12 +178,17 @@ def compare_command(
     report_b: Path,
     row_a: str | None,
     row_b: str | None,
+    pair_by_name: bool,
     json_path: Path | None,
 ) -> None:
     """Read REPORT_B against REPORT_A, episode by episode, on the same corpus."""
     try:
         result = compare(
-            load_report(report_a), load_report(report_b), row_a=row_a, row_b=row_b
+            load_report(report_a),
+            load_report(report_b),
+            row_a=row_a,
+            row_b=row_b,
+            pair_by_name=pair_by_name,
         )
     except CompareError as error:
         raise click.ClickException(str(error)) from error

@@ -1,0 +1,33 @@
+context-lab-1:
+    vertices:
+        s:
+            type: Sample
+            quote: The specimen
+            props:
+                sample_id:
+                    value: S-221
+                    context: context-lab-0
+                mass:
+                    value: 4.2
+                    quote: 4.2 mg
+context-lab-2:
+    vertices:
+        s:
+            type: Sample
+            quote: aliquot S-230
+            mention: true
+            props:
+                sample_id: S-230
+        p:
+            type: Project
+            quote: it
+            mention: true
+            props:
+                code:
+                    value: P-17
+                    context: context-lab-0b
+    edges:
+    -   relation: BELONGS_TO
+        from: s
+        to: p
+        quote: added aliquot S-230 to it

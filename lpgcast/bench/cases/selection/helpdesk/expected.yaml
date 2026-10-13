@@ -1,0 +1,47 @@
+selection-helpdesk-1:
+    vertices:
+        a:
+            type: Customer
+            quote: ACC-310
+            mention: true
+            props:
+                account: ACC-310
+        b:
+            type: Customer
+            quote: ACC-311
+            mention: true
+            props:
+                account: ACC-311
+        t:
+            type: Ticket
+            quote: issue T-8800
+            mention: true
+            props:
+                number: T-8800
+    edges:
+    -   relation: RAISED
+        from: a
+        to: t
+        quote: ACC-310 and ACC-311 raised issue T-8800
+    -   relation: RAISED
+        from: b
+        to: t
+        quote: ACC-311 raised issue T-8800
+selection-helpdesk-2:
+    vertices:
+        t:
+            type: Ticket
+            quote: Ticket T-8801
+            mention: true
+            props:
+                number: T-8801
+        g:
+            type: Tag
+            quote: billing
+            props:
+                label: billing
+    edges:
+    -   relation: TAGGED
+        from: t
+        to: g
+        quote: Ticket T-8801 is tagged billing

@@ -32,9 +32,12 @@ domains:
 | `recast` | a second cast with a fresh model call |
 | `injection` | instructions inside the text |
 | `distractors` | a wide schema sliced under a tight budget, with types the text names but says nothing about |
+| `selection` | a wide schema sliced under a budget, its types named in inflected forms (`parcels`, `shipped`) and related to each other |
+| `context` | a key stated only in an earlier text of the thread (`Episode.context`); everything else in the text itself |
 
 `expected.yaml` maps each episode to `vertices` (keyed by a handle), `edges` between handles, and
-`forbidden` items a cast must not write. Every quote occurs in the text and every value is what
+`forbidden` items a cast must not write. Every quote occurs in the text (a property may instead
+name the `context` item its quote is in, for an identity value only) and every value is what
 its field makes of it; a test checks both, and that the oracle scores perfectly on the whole
 schema.
 
@@ -59,6 +62,7 @@ Every metric is a ratio of counts pooled over episodes.
 | Conformance | items of the first reply with no schema finding, over items emitted; *final* is the attempt kept |
 | Type / relation / property hallucination | `unknown_type`, `undeclared_edge`, `undeclared_property` findings on the first reply, over vertices, edges, properties emitted |
 | Ungrounded | first-reply quotes not found in the text, over items emitted |
+| Unfaithful | first-reply numbers or dates their quote does not state (`value_not_in_quote`), over properties emitted |
 | Entity, edge, property P/R/F1 | matched over produced and over expected; properties on matched entities and edges only |
 | Direction | edges matched, over edges matched or found the wrong way round |
 | Span | matched items whose quote overlaps the expected one |
@@ -82,7 +86,10 @@ id, and only paired episodes count; the rest are listed. For each rate it gives 
 over the pooled counts, with a 95% paired bootstrap interval: episodes are resampled together
 with their pair, so an interval that spans zero says the corpus cannot tell the two runs apart.
 Per episode it counts score rises and falls, tabulates status changes and lists the largest
-drops and rises. Reports from different corpora are refused. `--row-a` and `--row-b` pick a row
+drops and rises. Across corpus versions, only cases whose content is unchanged are paired (each
+case carries a digest); with none in common the comparison is refused. A report from before case
+digests (corpus 1.0.0) pairs with a later one only under `--pair-by-name`, which asserts that its
+cases did not change. `--row-a` and `--row-b` pick a row
 when a report holds more than one model; `--json` also writes the comparison as JSON.
 
 ## Adding a case
