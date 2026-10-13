@@ -11,7 +11,7 @@ Lanes:
 - ``exact`` — code-like names and synonyms (``PLC``, ``WorkOrder``, an IRI)
   found verbatim, case-sensitively, in the text.
 - ``lexical`` — names and synonyms found as phrases in the text after
-  case-folding, camel/snake splitting and a plural strip, weighted by how few
+  case-folding, camel/snake splitting and a light suffix stemmer, weighted by how few
   elements share the phrase; plus description words the text repeats.
 - ``unit`` — a number followed by a token that is a property's declared unit
   (``200 kV``) seeds that property's owner.
@@ -199,20 +199,49 @@ class SelectionError(RuntimeError):
         self.metrics = metrics
 
 
-def _stem(word: str) -> str:
-    if len(word) > 3 and word.endswith("s") and not word.endswith("ss"):
+_DOUBLED = re.compile(r"([b-df-hj-km-rtv-y])\1$")
+_SIBILANT_ES = re.compile(r"(?:[sxz]|[cs]h)es$")
+
+
+def _drop_e(word: str) -> str:
+    if len(word) > 3 and word.endswith("e") and not word.endswith("ee"):
         return word[:-1]
     return word
 
 
+def _stem(word: str) -> str:
+    """A light suffix stemmer: plural ``-s``/``-es``/``-ies``, ``-ed``, ``-ing``,
+    and a final ``-e``, so ``route``, ``routes``, ``routed`` and ``routing``
+    meet. Not linguistic: schema terms and text go through the same rules, and
+    a stem shorter than three letters is never taken."""
+    if len(word) <= 3:
+        return word
+    if word.endswith("ies") and len(word) > 4:
+        return word[:-3] + "y"
+    for suffix in ("ing", "ed"):
+        if word.endswith(suffix) and len(word) - len(suffix) >= 3:
+            base = word[: -len(suffix)]
+            if _DOUBLED.search(base):
+                base = base[:-1]
+            return _drop_e(base)
+    if _SIBILANT_ES.search(word):
+        return word[:-2]
+    if word.endswith("s") and not word.endswith("ss"):
+        return _drop_e(word[:-1])
+    return _drop_e(word)
+
+
 def words(text: str) -> list[str]:
-    """Case-folded, camel- and snake-split, plural-stripped words."""
+    """Case-folded, camel- and snake-split, stemmed words."""
     out: list[str] = []
     for token in _WORD.findall(text):
         for part in _CAMEL.split(token):
             if part:
                 out.append(_stem(part.lower()))
     return out
+
+
+_STEMMED_STOPWORDS = frozenset(_STOPWORDS | {_stem(word) for word in _STOPWORDS})
 
 
 def _local_name(iri: str) -> str:
@@ -328,7 +357,7 @@ def _lexical_lane(
         for n in range(1, MAX_PHRASE_WORDS + 1)
         for i in range(len(text_words) - n + 1)
     }
-    content_words = {word for word in text_words if word not in _STOPWORDS}
+    content_words = {word for word in text_words if word not in _STEMMED_STOPWORDS}
 
     row_phrases = [_phrases(row) for row in rows]
     frequency: dict[tuple[str, ...], int] = defaultdict(int)
@@ -346,7 +375,7 @@ def _lexical_lane(
         description = {
             word
             for word in words(descriptions.get(_description_key(row), ""))
-            if word not in _STOPWORDS and len(word) > 2
+            if word not in _STEMMED_STOPWORDS and len(word) > 2
         }
         shared = description & content_words
         if len(shared) >= DESCRIPTION_MIN_WORDS:

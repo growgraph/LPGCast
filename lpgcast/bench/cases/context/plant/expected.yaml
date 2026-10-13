@@ -1,0 +1,41 @@
+context-plant-1:
+    vertices:
+        n:
+            type: Note
+            quote: Note
+            props:
+                body: the press is leaking oil again
+        m:
+            type: Machine
+            quote: the press
+            mention: true
+            props:
+                serial:
+                    value: S-12
+                    context: context-plant-0
+    edges:
+    -   relation: ABOUT
+        from: n
+        to: m
+        quote: the press is leaking oil again
+context-plant-2:
+    vertices:
+        p:
+            type: Person
+            quote: She
+            mention: true
+            props:
+                email:
+                    value: ann@plant.io
+                    context: context-plant-0b
+        m:
+            type: Machine
+            quote: press S-9
+            mention: true
+            props:
+                serial: S-9
+    edges:
+    -   relation: OPERATES
+        from: p
+        to: m
+        quote: runs press S-9

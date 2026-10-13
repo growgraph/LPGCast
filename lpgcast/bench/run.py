@@ -55,6 +55,10 @@ class CaseRecord(BaseModel):
     family: str
     instance: str
     split: str
+    digest: str | None = Field(
+        default=None,
+        description="The case's content digest; absent before corpus 1.1.0.",
+    )
     counts: Counts
     episodes: list[EpisodeRecord]
 
@@ -163,7 +167,10 @@ async def _episode(
     async with gate:
         with track_usage() as usage:
             outcome = await caster.cast_episode(episode)
-        counts = score_episode(outcome, expected, case.schema_, episode.text, usage)
+        context = {item.source_id: item.text for item in episode.context}
+        counts = score_episode(
+            outcome, expected, case.schema_, episode.text, usage, context
+        )
         if recaster is not None:
             with track_usage() as again:
                 second = await recaster.cast_episode(episode)
@@ -227,6 +234,7 @@ async def run_case(
         family=case.family,
         instance=case.instance,
         split=case.split,
+        digest=case.digest,
         counts=total([e.counts for e in episodes]),
         episodes=episodes,
     )

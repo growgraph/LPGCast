@@ -1,0 +1,6 @@
+description: A wide schema sliced under a budget; the text names its types in inflected forms and relates two of them.
+schema:
+-   helpdesk
+-   helpdesk-distractors
+settings:
+    slice_max_elements: 14

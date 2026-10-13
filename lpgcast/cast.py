@@ -4,14 +4,17 @@ Per episode: select a slice → one extraction call → validate → at most two
 typed repairs → quarantine what still fails → resolve identities and assemble.
 No critic pass: a valid extraction is never judged a second time.
 
-An episode that produces nothing is quarantined and the run goes on. A fault in
-the deployment — no key, a refused configuration, a cache miss while replaying
-— stops the run, because every other episode would fail the same way.
+An episode that produces nothing is quarantined and the run goes on; so is one
+whose request fails at the provider (``provider_error``), whose reply stops at
+the output limit (``truncated``) or that the model refuses (``refused``). A
+fault in the deployment — no key, a refused configuration, a cache miss while
+replaying — stops the run, because every other episode would fail the same way.
 """
 
 from __future__ import annotations
 
 import asyncio
+import json
 from collections.abc import Iterable
 from importlib.metadata import version
 from typing import Any, Literal
@@ -19,6 +22,7 @@ from typing import Any, Literal
 from graflo.architecture.schema.context import instance_json_schema
 from graflo.architecture.schema.document import Schema
 from graflo.architecture.schema.graflo_output import GraFloOutput
+from openai import APIError
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from lpgcast import __version__
@@ -33,7 +37,13 @@ from lpgcast.extract import (
 )
 from lpgcast.ground import Grounding
 from lpgcast.llm.cache import LLMCache, cache_key_config
-from lpgcast.llm.client import LLMClient
+from lpgcast.llm.client import (
+    LLMClient,
+    LLMRefusalError,
+    LLMReplyError,
+    LLMRequestTimeoutError,
+    LLMTruncatedError,
+)
 from lpgcast.llm.jsonparse import LLMJsonParseError
 from lpgcast.llm.usage import UsageTracker, track_usage
 from lpgcast.prompt import build_messages
@@ -53,12 +63,39 @@ from lpgcast.select import (
     select,
 )
 from lpgcast.sink import MemoryQuarantineSink, QuarantineRecord, QuarantineSink
-from lpgcast.validate import Fix, Validation, validate
+from lpgcast.validate import Finding, Fix, Validation, validate
+
+#: Version of the files a cast writes; bumped when a record's meaning changes.
+OUTPUT_FORMAT_VERSION = 2
 
 #: Repair requests after the first reply, at most.
 MAX_REPAIRS = 2
 
 EpisodeStatus = Literal["ok", "partial", "failed"]
+
+#: Faults of one request that say nothing about the deployment: the episode is
+#: quarantined and the run goes on.
+EPISODE_FAULTS = (LLMReplyError, LLMRequestTimeoutError, APIError)
+
+
+def _fault_kind(error: BaseException) -> str:
+    if isinstance(error, LLMTruncatedError):
+        return "truncated"
+    if isinstance(error, LLMRefusalError):
+        return "refused"
+    return "provider_error"
+
+
+def _findings_key(findings: list[Finding]) -> list[tuple[str, str, str, str]]:
+    return sorted(
+        (
+            f.kind,
+            f.path,
+            f.detail or "",
+            json.dumps(f.fragment, sort_keys=True, ensure_ascii=False),
+        )
+        for f in findings
+    )
 
 
 class EpisodeResult(BaseModel):
@@ -79,6 +116,10 @@ class EpisodeResult(BaseModel):
         default=0, description="Model requests, re-asks and repairs included."
     )
     repairs: int = Field(default=0, description="Typed repair rounds.")
+    repair_failure: str | None = Field(
+        default=None,
+        description="Why a repair request failed; the best earlier attempt is kept.",
+    )
     vertices: int = 0
     edges: int = 0
     pending: int = Field(
@@ -94,6 +135,7 @@ class RunManifest(BaseModel):
 
     lpgcast_version: str
     graflo_version: str
+    output_format_version: int = OUTPUT_FORMAT_VERSION
     schema_ref: str
     model: dict[str, Any] = Field(
         description="Every model setting that reaches the provider."
@@ -142,6 +184,9 @@ class EpisodeOutcome(BaseModel):
         default=None, description="The attempt kept, after repairs."
     )
     resolution: Resolution | None = None
+    quarantine: list[QuarantineRecord] = Field(
+        default_factory=list, description="What the episode left out."
+    )
 
 
 def _extractor() -> str:
@@ -183,7 +228,7 @@ class LPGCaster:
         )
         self.max_concurrent_episodes = max(1, max_concurrent_episodes)
 
-    async def _fail(
+    def _fail(
         self,
         episode: Episode,
         failure: str,
@@ -193,32 +238,34 @@ class LPGCaster:
         sliced: Selection | None = None,
         **known: Any,
     ) -> EpisodeOutcome:
-        await self.sink.write_records(
-            [
-                QuarantineRecord(
-                    record="episode",
-                    source_id=episode.source_id,
-                    kind=failure,
-                    message=message,
-                    raw_output=raw,
-                    attempts=known.get("requests", 0),
-                    schema_ref=schema_ref(self.schema),
-                )
-            ]
+        record = QuarantineRecord(
+            record="episode",
+            source_id=episode.source_id,
+            kind=failure,
+            message=message,
+            raw_output=raw,
+            attempts=known.get("requests", 0),
+            schema_ref=schema_ref(self.schema),
         )
         return EpisodeOutcome(
             result=EpisodeResult(
                 source_id=episode.source_id, status="failed", failure=failure, **known
             ),
             selection=sliced,
+            quarantine=[record],
         )
 
     async def cast_episode(self, episode: Episode) -> EpisodeOutcome:
-        """Cast one episode."""
+        """Cast one episode and write what it left out to the sink."""
+        outcome = await self._cast_episode(episode)
+        await self.sink.write_records(outcome.quarantine)
+        return outcome
+
+    async def _cast_episode(self, episode: Episode) -> EpisodeOutcome:
         try:
             selection = select(self.schema, episode.text, self.selection)
         except SelectionError as error:
-            return await self._fail(
+            return self._fail(
                 episode,
                 f"selection_{error.reason}",
                 str(error),
@@ -238,11 +285,11 @@ class LPGCaster:
                 max_episode_tokens=self.settings.max_episode_tokens,
             )
         except EpisodeTooLongError as error:
-            return await self._fail(
+            return self._fail(
                 episode, "too_long", str(error), sliced=selection, **known
             )
         except WireShapeError as error:
-            return await self._fail(
+            return self._fail(
                 episode,
                 "wire_shape",
                 str(error),
@@ -251,12 +298,22 @@ class LPGCaster:
                 **known,
             )
         except LLMJsonParseError as error:
-            return await self._fail(
+            return self._fail(
                 episode,
                 "unparseable",
                 str(error),
                 raw=error.doc,
                 sliced=selection,
+                **known,
+            )
+        except EPISODE_FAULTS as error:
+            return self._fail(
+                episode,
+                _fault_kind(error),
+                str(error),
+                raw=error.content if isinstance(error, LLMReplyError) else None,
+                sliced=selection,
+                requests=1,
                 **known,
             )
 
@@ -265,12 +322,16 @@ class LPGCaster:
             slice_, episode, user_instruction=self.settings.user_instruction
         )
         shape = instance_json_schema(slice_)
-        current = first = validate(extraction.wire, slice_, episode.text)
+        current = first = validate(
+            extraction.wire, slice_, episode.text, episode.context
+        )
         current_reply = extraction.completion.content
         best, best_reply = current, current_reply
         repairs = 0
+        repair_failure: str | None = None
         while current.repairable and repairs < MAX_REPAIRS:
             repairs += 1
+            asked = _findings_key(current.repairable)
             try:
                 completion = await self.client.acomplete_json(
                     repair_messages(messages, current_reply, current.repairable),
@@ -279,16 +340,27 @@ class LPGCaster:
                 )
                 requests += completion.attempts
                 wire = WireExtraction.model_validate(completion.data)
-            except (LLMJsonParseError, ValidationError):
+            except LLMJsonParseError:
                 requests += 1
+                repair_failure = "unparseable"
                 break
-            current = validate(wire, slice_, episode.text)
+            except ValidationError:
+                repair_failure = "wire_shape"
+                break
+            except EPISODE_FAULTS as error:
+                requests += 1
+                repair_failure = _fault_kind(error)
+                break
+            current = validate(wire, slice_, episode.text, episode.context)
             current_reply = completion.content
             if current.kept >= best.kept:
                 best, best_reply = current, current_reply
+            # The same findings again: the slice does not let the model fix them.
+            if _findings_key(current.repairable) == asked:
+                break
 
-        known.update(requests=requests, repairs=repairs)
-        await self._quarantine(episode, best, best_reply, requests)
+        known.update(requests=requests, repairs=repairs, repair_failure=repair_failure)
+        quarantine = self._records(episode, best, best_reply, requests)
         resolution = resolve(
             best,
             slice_,
@@ -318,11 +390,12 @@ class LPGCaster:
             first=first,
             validation=best,
             resolution=resolution,
+            quarantine=quarantine,
         )
 
-    async def _quarantine(
+    def _records(
         self, episode: Episode, validation: Validation, reply: str, requests: int
-    ) -> None:
+    ) -> list[QuarantineRecord]:
         ref = schema_ref(self.schema)
         records = [
             QuarantineRecord(
@@ -353,10 +426,10 @@ class LPGCaster:
             )
             for item in validation.unmapped
         ]
-        await self.sink.write_records(records)
+        return records
 
     async def cast(self, episodes: Iterable[Episode]) -> CastResult:
-        """Cast *episodes*; results keep their order.
+        """Cast *episodes*; results and quarantine records keep their order.
 
         Raises:
             LLMConfigurationError: the deployment is misconfigured.
@@ -367,7 +440,7 @@ class LPGCaster:
 
         async def _one(episode: Episode) -> EpisodeOutcome:
             async with gate:
-                return await self.cast_episode(episode)
+                return await self._cast_episode(episode)
 
         with track_usage() as usage:
             try:
@@ -376,6 +449,8 @@ class LPGCaster:
             except ExceptionGroup as errors:
                 raise errors.exceptions[0] from errors
         outcomes = [task.result() for task in tasks]
+        for outcome in outcomes:
+            await self.sink.write_records(outcome.quarantine)
         return self._assemble(outcomes, usage)
 
     def _assemble(

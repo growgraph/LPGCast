@@ -222,3 +222,28 @@ def cast(
         f"{manifest.quarantined} quarantined, {manifest.unmapped} unmapped -> {out_dir}",
         err=True,
     )
+
+
+@main.command()
+@click.option(
+    "--host", help="Address to bind; default LPGCAST_SERVE_HOST or 127.0.0.1."
+)
+@click.option("--port", type=int, help="Port; default LPGCAST_SERVE_PORT or 8997.")
+def serve(host: str | None, port: int | None) -> None:
+    """Serve POST /cast over HTTP (needs the `server` extra).
+
+    Every request needs `Authorization: Bearer $LPGCAST_SERVE_API_KEY`; without
+    a key the service refuses to cast unless LPGCAST_SERVE_ALLOW_ANONYMOUS is
+    set. Model settings come from LPGCAST_LLM_*.
+    """
+    try:
+        from lpgcast.serve import run
+    except ImportError as error:
+        raise click.ClickException(
+            f"{error.name or 'fastapi'} is missing: pip install 'lpgcast[server]'"
+        ) from error
+    from lpgcast.config import ServeSettings
+
+    settings = ServeSettings()
+    overrides = {k: v for k, v in (("host", host), ("port", port)) if v is not None}
+    run(settings.model_copy(update=overrides))

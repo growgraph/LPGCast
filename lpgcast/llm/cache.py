@@ -45,6 +45,9 @@ class CachedResponse(BaseModel):
     )
     model: str | None = Field(default=None, description="Model the endpoint reported.")
     finish_reason: str | None = Field(default=None, description="Provider stop reason.")
+    refusal: str | None = Field(
+        default=None, description="The model's refusal message, when it refused."
+    )
     usage: TokenUsage | None = Field(
         default=None, description="Token counts, replayed on a hit."
     )

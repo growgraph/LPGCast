@@ -64,6 +64,7 @@ RATES: dict[str, Rate] = {
         c.undeclared_property_first, c.properties_first
     ),
     "ungrounded": lambda c: ratio(c.ungrounded_first, c.emitted_first),
+    "unfaithful_value": lambda c: ratio(c.unfaithful_value_first, c.properties_first),
     "entity_precision": lambda c: ratio(c.entities_matched, c.entities_produced),
     "entity_recall": lambda c: ratio(c.entities_matched, c.entities_expected),
     "entity_f1": _entity_f1,
@@ -162,6 +163,7 @@ def to_markdown(report: BenchReport) -> str:
                 _fmt(r["relation_hallucination"]),
                 _fmt(r["property_hallucination"]),
                 _fmt(r["ungrounded"]),
+                _fmt(r["unfaithful_value"]),
                 _fmt(r["entity_f1"]),
                 _fmt(r["edge_f1"]),
                 _fmt(r["property_precision"]),
@@ -185,6 +187,7 @@ def to_markdown(report: BenchReport) -> str:
             "Relation H",
             "Property H",
             "Ungrounded",
+            "Unfaithful",
             "Entity F1",
             "Edge F1",
             "Prop P",

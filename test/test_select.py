@@ -196,3 +196,22 @@ def test_empty_text_is_refused(plant):
     with pytest.raises(SelectionError) as info:
         select(plant, "   ")
     assert info.value.reason == "empty_text"
+
+
+@pytest.mark.parametrize(
+    ("forms", "stem"),
+    [
+        (("route", "routes", "routed", "routing"), "rout"),
+        (("battery", "batteries"), "battery"),
+        (("box", "boxes"), "box"),
+        (("ship", "shipped", "shipping"), "ship"),
+        (("install", "installing", "installed"), "install"),
+        (("address", "addresses"), "address"),
+    ],
+)
+def test_suffixes_meet_at_one_stem(forms, stem):
+    assert {words(form)[0] for form in forms} == {stem}
+
+
+def test_short_words_are_not_stemmed():
+    assert words("bus use ms") == ["bus", "use", "ms"]

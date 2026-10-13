@@ -34,14 +34,22 @@ chunking, no encoder and no vector store. An episode longer than
 | `undeclared_property` | a property its type does not declare |
 | `duplicate_property` | a property given twice |
 | `coercion` | a value its field type refuses, or a unit other than the declared one |
+| `value_not_in_quote` | a number written as digits, or a date, that its quote does not state (`37.5` on "3.75 kW", `2024-03-01` on "March 2024"); spelled-out and relative values are not checked |
 | `quote_not_found` | an item whose quote is not in the text |
 | `endpoint_invalid` | an edge whose endpoint was removed; never shown to the model, it goes when the endpoint is fixed |
 
+A repair that returns the same findings is not repeated: the slice does not let
+the model fix them. A repair request that fails keeps the best earlier reply and
+records why in the episode's `repair_failure`.
+
 A failure of the whole episode is recorded with its reason: the selection found
-nothing (`selection_*`), the text is over the ceiling (`too_long`), the reply was
-not JSON (`unparseable`) or not the reply shape (`wire_shape`), or nothing in it
-survived (`nothing_valid`). A model that is misconfigured, or a cache miss while
-replaying, stops the run instead: every other episode would fail the same way.
+nothing (`selection_*`), the text is over the ceiling (`too_long`), the provider
+rejected or dropped the request (`provider_error`), the reply stopped at the
+output limit (`truncated`), the model refused (`refused`), the reply was not
+JSON (`unparseable`) or not the reply shape (`wire_shape`), or nothing in it
+survived (`nothing_valid`). A truncated or refused reply is not re-asked. A model
+that is misconfigured, or a cache miss while replaying, stops the run instead:
+every other episode would fail the same way.
 
 ## Beside OntoCast
 

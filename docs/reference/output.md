@@ -25,7 +25,8 @@ JSON is written with sorted keys, so two casts compare with `diff`.
 | `retrieval` | how selection went: hits per lane, seeds fused, gated out, capped and kept, and the schema's size |
 | `requests`, `repairs` | model requests, re-asks and repairs included; typed repair rounds |
 | `vertices`, `edges`, `pending`, `quarantined`, `unmapped` | counts |
-| `fixes` | deterministic corrections applied without asking the model: `coerced`, `edge_reversed`, `quote_normalized` |
+| `repair_failure` | why a repair request failed, when one did; the best earlier reply was kept |
+| `fixes` | deterministic corrections applied without asking the model: `coerced`, `edge_reversed`, `quote_normalized`, `grounded_in_context` |
 
 ## `pending.jsonl`
 
@@ -35,7 +36,8 @@ An edge with an endpoint known only by a secondary identity: its `edge_id`, its
 
 ## `manifest.json`
 
-The LPGCast and graflo versions, the schema as `name@version`, every model
+The output format version (2: groundings may point into context), the LPGCast
+and graflo versions, the schema as `name@version`, every model
 setting that reaches the provider, the token ceiling and slice budget, the
 counts by status, and `usage`: calls, cache hits, failures, re-asks, and
 tokens, `billed` apart from `replayed`.

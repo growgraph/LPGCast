@@ -5,6 +5,53 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **`lpgcast-bench compare A.json B.json`**: run B read against run A episode by episode, with
+  pooled rate deltas, paired bootstrap intervals, score rises and falls, and status changes.
+  `lpgcast-bench` alone still runs the benchmark.
+- **`LLMTruncatedError` and `LLMRefusalError`**: a reply cut off at the output limit or refused
+  is raised as such, not re-asked; `UsageTracker` counts both.
+- **`EpisodeResult.repair_failure`**: why a repair request failed.
+- **`value_not_in_quote` finding**: a number written as digits, or a date, must be what its quote
+  states; typed repair as for other findings. The benchmark reports it as *Unfaithful*.
+- Repair guidance for a unit other than the declared one: leave the property out, never convert.
+- **Identity values ground in context**: a key of an entity the text refers to may be quoted from
+  `Episode.context`; its grounding carries `in_context` (the context item's source id) and the
+  `grounded_in_context` fix is recorded. `manifest.json` gains `output_format_version` (2).
+- A concept page for `Episode.context`.
+- **`lpgcast serve`** (the `server` extra: FastAPI, uvicorn): a stateless `POST /cast` taking a
+  schema inline, episodes and options, returning graph, groundings, pending edges, quarantine,
+  episode results and the manifest; fail-closed bearer key (`LPGCAST_SERVE_API_KEY`), a batch cap,
+  `GET /health`. Guide: *Running as a service*.
+- **`schema_from_mapping`**: a schema, or a manifest's schema, from a mapping.
+- **Benchmark corpus 1.1.0**: `selection` (wide schemas, inflected type names) and `context` (a key
+  quoted from an earlier text) families; an expected property may name its context item. Each case
+  carries a content digest, and `compare` pairs runs on different corpus versions over unchanged
+  cases (`--pair-by-name` for reports from before digests).
+
+### Changed
+
+- A repair that returns the same findings is not repeated.
+- Selection stems `-es`, `-ies`, `-ed` and `-ing` beside the plural `-s`, so `shipped` meets
+  `ship` and `routing` meets `route`.
+- `write_cast` is a thin wrapper over graflo's `write_container`, and `WriteReport` is graflo's
+  `ContainerWriteReport`; requires graflo ≥ 1.18.0, whose `subschema()` keeps the edges between
+  seeds under a tight budget.
+- The prompt asks for plain numbers and ISO 8601 dates, with the quote in the text's own form, so
+  `1,250` or `4 March 2024` no longer cost a repair. Cached replies from earlier versions miss.
+
+### Fixed
+
+- A provider fault (rate limit, server error, a second timeout, context length) fails only its
+  episode, quarantined as `provider_error`, `truncated` or `refused`; the run goes on.
+- A fault during a repair keeps the best earlier reply instead of failing the episode.
+- `quarantine.jsonl` is written in episode order, so a replay reproduces it byte for byte.
+- Quotes match across typographic quotes and dashes (`“…”`, `’`, `–`, `−`).
+- A property's quote takes the occurrence nearest its vertex's or edge's quote, not the first.
+
 ## [0.1.1] - 2026-10-11
 
 ### Added

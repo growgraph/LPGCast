@@ -1,0 +1,48 @@
+selection-logistics-1:
+    vertices:
+        a:
+            type: Shipment
+            quote: TRK-7001
+            mention: true
+            props:
+                tracking: TRK-7001
+        b:
+            type: Shipment
+            quote: TRK-7002
+            mention: true
+            props:
+                tracking: TRK-7002
+        w:
+            type: Warehouse
+            quote: hub OSL-1
+            mention: true
+            props:
+                code: OSL-1
+    edges:
+    -   relation: SHIPPED_TO
+        from: a
+        to: w
+        quote: TRK-7001 and TRK-7002 were shipped to hub OSL-1
+    -   relation: SHIPPED_TO
+        from: b
+        to: w
+        quote: TRK-7002 were shipped to hub OSL-1
+selection-logistics-2:
+    vertices:
+        s:
+            type: Shipment
+            quote: consignment TRK-7003
+            mention: true
+            props:
+                tracking: TRK-7003
+        c:
+            type: Carrier
+            quote: Polar Haul
+            mention: true
+            props:
+                name: Polar Haul
+    edges:
+    -   relation: CARRIED_BY
+        from: s
+        to: c
+        quote: Polar Haul carried consignment TRK-7003

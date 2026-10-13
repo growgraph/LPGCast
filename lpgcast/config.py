@@ -152,3 +152,26 @@ class LPGCastSettings(BaseSettings):
         default=None,
         description="Extra guidance placed after the rules, before the text.",
     )
+
+
+class ServeSettings(BaseSettings):
+    """``lpgcast serve``: the HTTP service."""
+
+    model_config = SettingsConfigDict(env_prefix="LPGCAST_SERVE_", extra="ignore")
+
+    api_key: SecretStr | None = Field(
+        default=None,
+        description=(
+            "Bearer token every request but ``/health`` must carry. Without one "
+            "the service refuses to cast unless ``allow_anonymous`` is set."
+        ),
+    )
+    allow_anonymous: bool = Field(
+        default=False,
+        description="Serve without a key; for local development only.",
+    )
+    max_episodes: int = Field(
+        default=200, ge=1, description="Most episodes one request may carry."
+    )
+    host: str = Field(default="127.0.0.1", description="Address to bind.")
+    port: int = Field(default=8997, ge=1, le=65535, description="Port to bind.")

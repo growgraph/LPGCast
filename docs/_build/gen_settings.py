@@ -10,12 +10,13 @@ from typing import Any
 import mkdocs_gen_files
 from pydantic_settings import BaseSettings
 
-from lpgcast.config import CacheSettings, LLMSettings, LPGCastSettings
+from lpgcast.config import CacheSettings, LLMSettings, LPGCastSettings, ServeSettings
 
 SECTIONS: list[tuple[str, type[BaseSettings], str]] = [
     ("Model", LLMSettings, "LPGCAST_LLM_"),
     ("Response cache", CacheSettings, "LPGCAST_CACHE_"),
     ("Cast", LPGCastSettings, "LPGCAST_"),
+    ("Service", ServeSettings, "LPGCAST_SERVE_"),
 ]
 
 

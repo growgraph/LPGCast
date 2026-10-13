@@ -17,15 +17,44 @@ from pydantic import BaseModel, Field
 _EDGE_PUNCTUATION = " \t\r\n.,;:!?\"'`()[]{}«»“”‘’"
 
 
+#: Typographic quotes and dashes, read as their plain forms.
+_TYPOGRAPHIC = str.maketrans(
+    {
+        "“": '"',
+        "”": '"',
+        "„": '"',
+        "‟": '"',
+        "«": '"',
+        "»": '"',
+        "‘": "'",
+        "’": "'",
+        "‚": "'",
+        "‛": "'",
+        "′": "'",
+        "‐": "-",
+        "‑": "-",
+        "‒": "-",
+        "–": "-",
+        "—": "-",
+        "―": "-",
+        "−": "-",
+    }
+)
+
+
 class Span(BaseModel):
-    """Character offsets into an episode's text, end exclusive."""
+    """Character offsets, end exclusive, into the episode's text or, when
+    ``context`` is set, into the text of that context item."""
 
     start: int
     end: int
+    context: str | None = Field(
+        default=None, description="Source id of the context item, if not the text."
+    )
 
 
 def _fold(char: str) -> str:
-    decomposed = unicodedata.normalize("NFKD", char)
+    decomposed = unicodedata.normalize("NFKD", char.translate(_TYPOGRAPHIC))
     return "".join(c for c in decomposed if not unicodedata.combining(c)).lower()
 
 
@@ -49,24 +78,49 @@ def _normalized(text: str) -> tuple[str, list[int]]:
     return "".join(out), index
 
 
-def locate(quote: str, text: str) -> Span | None:
-    """Find *quote* in *text*: exactly, then ignoring case, accents and
-    whitespace runs, then also without surrounding punctuation. Returns the
-    first match."""
-    if not quote.strip():
-        return None
-    start = text.find(quote)
-    if start != -1:
-        return Span(start=start, end=start + len(quote))
+def _all(needle: str, haystack: str) -> list[int]:
+    starts: list[int] = []
+    found = haystack.find(needle)
+    while found != -1:
+        starts.append(found)
+        found = haystack.find(needle, found + 1)
+    return starts
+
+
+def _gap(span: Span, near: Span) -> int:
+    return max(0, near.start - span.end, span.start - near.end)
+
+
+def _occurrences(quote: str, text: str) -> list[Span]:
+    exact = _all(quote, text)
+    if exact:
+        return [Span(start=s, end=s + len(quote)) for s in exact]
     haystack, index = _normalized(text)
     for candidate in (quote, quote.strip(_EDGE_PUNCTUATION)):
         needle = _normalized(candidate.strip())[0]
         if not needle:
             continue
-        found = haystack.find(needle)
-        if found != -1:
-            return Span(start=index[found], end=index[found + len(needle) - 1] + 1)
-    return None
+        found = _all(needle, haystack)
+        if found:
+            return [
+                Span(start=index[s], end=index[s + len(needle) - 1] + 1) for s in found
+            ]
+    return []
+
+
+def locate(quote: str, text: str, *, near: Span | None = None) -> Span | None:
+    """Find *quote* in *text*: exactly, then ignoring case, accents, whitespace
+    runs and typographic quotes and dashes, then also without surrounding
+    punctuation. Of several occurrences, the one nearest *near* wins, else the
+    first."""
+    if not quote.strip():
+        return None
+    spans = _occurrences(quote, text)
+    if not spans:
+        return None
+    if near is None:
+        return spans[0]
+    return min(spans, key=lambda span: (_gap(span, near), span.start))
 
 
 class Grounding(BaseModel):
@@ -93,7 +147,12 @@ class Grounding(BaseModel):
     )
     char_start: int
     char_end: int
-    quote: str = Field(description="The text at the span, as it stands in the episode.")
+    in_context: str | None = Field(
+        default=None,
+        description="Source id of the context item the span points into; None "
+        "for the episode's own text. Only identity values ground in context.",
+    )
+    quote: str = Field(description="The text at the span, as it stands in the source.")
     extractor: str = Field(description="``lpgcast/<version>``.")
     model: str | None = Field(
         default=None, description="Model that produced the reply."

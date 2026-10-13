@@ -1,0 +1,46 @@
+context-helpdesk-1:
+    vertices:
+        a:
+            type: Ticket
+            quote: That ticket
+            mention: true
+            props:
+                number:
+                    value: T-5521
+                    context: context-helpdesk-0
+        b:
+            type: Ticket
+            quote: T-5490
+            mention: true
+            props:
+                number: T-5490
+    edges:
+    -   relation: DUPLICATE_OF
+        from: a
+        to: b
+        quote: That ticket is a duplicate of T-5490
+context-helpdesk-2:
+    vertices:
+        a:
+            type: Agent
+            quote: She
+            mention: true
+            props:
+                handle:
+                    value: '@mira'
+                    context: context-helpdesk-0b
+        t:
+            type: Ticket
+            quote: it
+            mention: true
+            props:
+                number:
+                    value: T-6100
+                    context: context-helpdesk-0b
+    edges:
+    -   relation: HANDLES
+        from: a
+        to: t
+        quote: She has handled it since 2024-05-02
+        props:
+            since: '2024-05-02'

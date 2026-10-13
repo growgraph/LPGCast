@@ -1,0 +1,38 @@
+selection-plant-1:
+    vertices:
+        a:
+            type: Machine
+            quote: Lathe S-31
+            mention: true
+            props:
+                serial: S-31
+        b:
+            type: Machine
+            quote: lathe S-32
+            mention: true
+            props:
+                serial: S-32
+    edges:
+    -   relation: FEEDS
+        from: a
+        to: b
+        quote: Lathe S-31 feeds lathe S-32
+selection-plant-2:
+    vertices:
+        o:
+            type: Person
+            quote: Omar Diaz (omar@plant.io)
+            props:
+                email: omar@plant.io
+                name: Omar Diaz
+        l:
+            type: Person
+            quote: Lena Park (lena@plant.io)
+            props:
+                email: lena@plant.io
+                name: Lena Park
+    edges:
+    -   relation: SUPERVISES
+        from: o
+        to: l
+        quote: Omar Diaz (omar@plant.io) supervises Lena Park
