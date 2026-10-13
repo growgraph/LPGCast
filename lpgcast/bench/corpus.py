@@ -38,7 +38,7 @@ SPLITS_FILE = CASES_DIR / "SPLITS.yaml"
 CORPUS_VERSION = "1.1.0"
 
 #: Content hash of ``cases/`` and ``schemas/`` at :data:`CORPUS_VERSION`.
-CORPUS_DIGEST = "4703509c976f20c4338b4ab7411caca77b1b6899cffb994236f4e40819f12c01"
+CORPUS_DIGEST = "9378eb758efbd539a103b1819254704271f4f6e4f3447ae021297ec405ed23ee"
 
 Split = Literal["dev", "test"]
 
